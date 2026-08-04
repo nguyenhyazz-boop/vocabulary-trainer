@@ -21,7 +21,7 @@ if "wrong_index" not in st.session_state:
 if not wrong_words:
     st.success("🎉 Bạn đã hoàn thành xuất sắc tất cả các từ sai!")
     st.balloons()
-    if st.button("Quay lại trang chủ"):
+    st.info("💡 Hãy sang mục Quiz làm bài luyện tập. Nếu làm sai câu nào, từ đó sẽ tự động xuất hiện lại ở đây nhé!")
         st.session_state.wrong_index = 0
         st.rerun()
 else:
