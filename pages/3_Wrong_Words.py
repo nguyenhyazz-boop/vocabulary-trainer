@@ -4,7 +4,7 @@ from utils.data_manager import load_data, save_data
 # 1. CẤU HÌNH TRANG VÀ GIAO DIỆN
 st.set_page_config(page_title="Review Wrong Words", page_icon="❌", layout="centered")
 
-# Thêm CSS để trang trí thẻ từ vựng cho đẹp mắt giống bản gốc
+# Thêm CSS để trang trí thẻ từ vựng
 st.markdown("""
     <style>
     .word-card {
@@ -46,21 +46,19 @@ if not wrong_words:
     st.info("💡 Bạn có thể quay lại trang chủ để học từ mới, hoặc reset lại các từ sai để ôn tập lại từ đầu.")
     
     col_a, col_b = st.columns(2)
-   with col_a:
-        # TÍNH NĂNG MỚI: Reset lại TẤT CẢ từ vựng để ôn tập
+    with col_a:
+        # TÍNH NĂNG: Reset lại TẤT CẢ từ vựng để học lại
         if st.button("🔄 Luyện tập lại từ đầu", use_container_width=True):
-            # Đưa toàn bộ từ vựng vào danh sách ôn tập (không cần điều kiện)
             for w in words:
                 w["count_wrong"] = 1 
-            
             save_data(data)
             st.session_state.wrong_index = 0
             st.rerun()
             
     with col_b:
-        # TÍNH NĂNG MỚI: Nút quay lại trang chủ an toàn
+        # TÍNH NĂNG: Nút quay lại trang chủ an toàn
         if st.button("🏠 Về trang chủ (Study)", use_container_width=True):
-            st.switch_page("app.py") # Lưu ý: Đảm bảo file chính của bạn tên là app.py hoặc 1_Study.py
+            st.switch_page("app.py")
 
 # ==========================================
 # TRƯỜNG HỢP 2: KHI VẪN CÒN TỪ SAI CẦN HỌC
@@ -74,7 +72,7 @@ else:
     current_idx = st.session_state.wrong_index
     current_word = wrong_words[current_idx]
     
-    # FIX LỖI SẬP WEB: Đảm bảo progress luôn an toàn [0.0 -> 1.0]
+    # Đảm bảo progress luôn an toàn [0.0 -> 1.0]
     progress_val = (current_idx + 1) / total_wrong
     safe_progress = max(0.0, min(1.0, float(progress_val)))
     
@@ -110,7 +108,6 @@ else:
                     w['count_correct'] = w.get('count_correct', 0) + 1
                     break
             save_data(data)
-            # Cố định index, vì từ hiện tại bị xóa thì từ kế tiếp sẽ tự đẩy lên vị trí này
             st.rerun()
 
     with col2:
