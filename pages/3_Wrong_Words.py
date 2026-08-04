@@ -58,7 +58,12 @@ total_wrong_count = len(wrong_words_list)
 studied_count = len(st.session_state.wrong_studied)
 progress = studied_count / total_wrong_count if total_wrong_count > 0 else 0
 
-st.progress(progress)
+if len(wrong_words) == 0:
+    st.success("🎉 Bạn đã hoàn thành xuất sắc tất cả các từ sai!")
+    st.balloons()
+else:
+    progress_value = min(max(float(progress), 0.0), 1.0)
+    st.progress(progress_value)
 st.write(f"Đã ôn tập: **{studied_count} / {total_wrong_count}** từ sai")
 
 # --- 5. HIỂN THỊ TỪ VỰNG & SHOW MEANING ---
