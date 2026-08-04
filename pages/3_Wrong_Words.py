@@ -7,7 +7,6 @@ st.title("❌ Ôn Tập Từ Sai")
 data = load_data()
 words = data.get("words", [])
 
-# Lọc từ sai
 wrong_words = [w for w in words if w.get("count_wrong", 0) > 0]
 
 if "wrong_index" not in st.session_state:
@@ -15,13 +14,14 @@ if "wrong_index" not in st.session_state:
 
 if not wrong_words:
     st.warning("📭 Hiện tại không có từ nào bị sai cả!")
-    st.info("💡 Bạn hãy qua mục **Study** hoặc **Quiz** học trước nhé.")
+    st.info("💡 Bạn có thể bấm nút bên dưới để ép toàn bộ từ vựng ra ôn tập lại:")
     
-    # Nút bấm đổi trực tiếp count_wrong thành 1 cho tất cả để test bất cứ lúc nào
-    if st.button("⚡ Bấm vào đây để hiện lại toàn bộ từ vựng"):
+    # Đã thêm st.rerun() ở đây để bấm phát là ăn ngay lập tức
+    if st.button("⚡ Bấm vào đây để hiện lại toàn bộ từ vựng", use_container_width=True):
         for w in words:
             w["count_wrong"] = 1
         save_data(data)
+        st.session_state.wrong_index = 0
         st.rerun()
 else:
     if st.session_state.wrong_index >= len(wrong_words):
@@ -31,7 +31,6 @@ else:
     idx = st.session_state.wrong_index
     curr = wrong_words[idx]
 
-    # Progress an toàn tuyệt đối
     st.progress(min(1.0, max(0.0, (idx + 1) / total)))
     st.write(f"Đang ôn từ: **{idx + 1}** / {total}")
 
