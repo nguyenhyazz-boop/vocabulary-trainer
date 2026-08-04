@@ -1,0 +1,517 @@
+{
+    "Make a contribution to": {
+        "meaning": "đóng góp vào",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make a decision": {
+        "meaning": "quyết định",
+        "correct": 1,
+        "wrong": 1
+    },
+    "Make a difference": {
+        "meaning": "tạo ra sự khác biệt",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make a mistake": {
+        "meaning": "phạm lỗi",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make an attempt": {
+        "meaning": "cố gắng",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make an effort": {
+        "meaning": "nỗ lực",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make ends meet": {
+        "meaning": "trang trải cuộc sống",
+        "correct": 0,
+        "wrong": 1
+    },
+    "Make fun of": {
+        "meaning": "chế giễu",
+        "correct": 0,
+        "wrong": 0
+    },
+    "Make sense": {
+        "meaning": "có lý",
+        "correct": 0,
+        "wrong": 0
+    },
+    "make progress": {
+        "meaning": "tiến bộ",
+        "correct": 1,
+        "wrong": 1
+    },
+    "make use of": {
+        "meaning": "tận dụng",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take advantage of": {
+        "meaning": "tận dụng",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take responsibility for": {
+        "meaning": "chịu trách nhiệm",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take something for granted": {
+        "meaning": "coi là hiển nhiên",
+        "correct": 1,
+        "wrong": 0
+    },
+    "take pride in": {
+        "meaning": "tự hào về",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take measures": {
+        "meaning": "đưa ra biện pháp",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take precautions": {
+        "meaning": "phòng ngừa",
+        "correct": 1,
+        "wrong": 0
+    },
+    "take interest in": {
+        "meaning": "quan tâm đến",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take effect": {
+        "meaning": "có hiệu lực",
+        "correct": 1,
+        "wrong": 0
+    },
+    "take part in": {
+        "meaning": "tham gia",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take action": {
+        "meaning": "hành động",
+        "correct": 0,
+        "wrong": 0
+    },
+    "do research": {
+        "meaning": "nghiên cứu",
+        "correct": 1,
+        "wrong": 0
+    },
+    "do someone a favor": {
+        "meaning": "giúp đỡ ai",
+        "correct": 0,
+        "wrong": 0
+    },
+    "do more harm than good": {
+        "meaning": "hại nhiều hơn lợi",
+        "correct": 0,
+        "wrong": 0
+    },
+    "do damage to": {
+        "meaning": "gây hại cho",
+        "correct": 0,
+        "wrong": 0
+    },
+    "pay attention to": {
+        "meaning": "chú ý đến",
+        "correct": 0,
+        "wrong": 0
+    },
+    "pay a visit to": {
+        "meaning": "ghé thăm",
+        "correct": 0,
+        "wrong": 0
+    },
+    "pay tribute to": {
+        "meaning": "tri ân",
+        "correct": 0,
+        "wrong": 0
+    },
+    "give preference to": {
+        "meaning": "ưu tiên",
+        "correct": 0,
+        "wrong": 0
+    },
+    "give someone a hand": {
+        "meaning": "giúp đỡ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "give birth to": {
+        "meaning": "sinh ra",
+        "correct": 0,
+        "wrong": 0
+    },
+    "bring about": {
+        "meaning": "gây ra",
+        "correct": 0,
+        "wrong": 0
+    },
+    "bring up": {
+        "meaning": "đề cập",
+        "correct": 0,
+        "wrong": 0
+    },
+    "call off": {
+        "meaning": "hủy bỏ",
+        "correct": 1,
+        "wrong": 1
+    },
+    "carry out": {
+        "meaning": "thực hiện",
+        "correct": 1,
+        "wrong": 1
+    },
+    "catch up with": {
+        "meaning": "bắt kịp",
+        "correct": 0,
+        "wrong": 0
+    },
+    "come up with": {
+        "meaning": "nảy ra",
+        "correct": 0,
+        "wrong": 1
+    },
+    "cut down on": {
+        "meaning": "cắt giảm",
+        "correct": 1,
+        "wrong": 0
+    },
+    "face up to": {
+        "meaning": "đối mặt với",
+        "correct": 0,
+        "wrong": 0
+    },
+    "find out": {
+        "meaning": "tìm ra",
+        "correct": 0,
+        "wrong": 0
+    },
+    "get over": {
+        "meaning": "vượt qua",
+        "correct": 0,
+        "wrong": 0
+    },
+    "give up": {
+        "meaning": "từ bỏ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "go off": {
+        "meaning": "reo",
+        "correct": 0,
+        "wrong": 0
+    },
+    "hold up": {
+        "meaning": "trì hoãn",
+        "correct": 0,
+        "wrong": 0
+    },
+    "keep up with": {
+        "meaning": "theo kịp",
+        "correct": 0,
+        "wrong": 0
+    },
+    "look after": {
+        "meaning": "chăm sóc",
+        "correct": 0,
+        "wrong": 0
+    },
+    "look down on": {
+        "meaning": "coi thường",
+        "correct": 0,
+        "wrong": 0
+    },
+    "look up to": {
+        "meaning": "ngưỡng mộ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "look forward to": {
+        "meaning": "mong đợi",
+        "correct": 0,
+        "wrong": 0
+    },
+    "make up": {
+        "meaning": "làm hòa",
+        "correct": 0,
+        "wrong": 0
+    },
+    "put off": {
+        "meaning": "trì hoãn",
+        "correct": 0,
+        "wrong": 0
+    },
+    "put up with": {
+        "meaning": "chịu đựng",
+        "correct": 0,
+        "wrong": 0
+    },
+    "run out of": {
+        "meaning": "cạn kiệt",
+        "correct": 0,
+        "wrong": 0
+    },
+    "set up": {
+        "meaning": "thành lập",
+        "correct": 0,
+        "wrong": 0
+    },
+    "show off": {
+        "meaning": "khoe khoang",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take after": {
+        "meaning": "giống",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take off": {
+        "meaning": "cất cánh",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take over": {
+        "meaning": "tiếp quản",
+        "correct": 0,
+        "wrong": 0
+    },
+    "turn down": {
+        "meaning": "từ chối",
+        "correct": 0,
+        "wrong": 0
+    },
+    "turn up": {
+        "meaning": "xuất hiện",
+        "correct": 0,
+        "wrong": 0
+    },
+    "wear out": {
+        "meaning": "làm kiệt sức",
+        "correct": 0,
+        "wrong": 0
+    },
+    "at risk of": {
+        "meaning": "có nguy cơ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "by chance": {
+        "meaning": "tình cờ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in terms of": {
+        "meaning": "về mặt",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on behalf of": {
+        "meaning": "thay mặt cho",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in spite of": {
+        "meaning": "mặc dù",
+        "correct": 0,
+        "wrong": 0
+    },
+    "despite": {
+        "meaning": "mặc dù",
+        "correct": 0,
+        "wrong": 0
+    },
+    "with a view to": {
+        "meaning": "với mục đích",
+        "correct": 1,
+        "wrong": 0
+    },
+    "under pressure": {
+        "meaning": "chịu áp lực",
+        "correct": 0,
+        "wrong": 0
+    },
+    "out of order": {
+        "meaning": "bị hỏng",
+        "correct": 0,
+        "wrong": 0
+    },
+    "out of breath": {
+        "meaning": "hết hơi",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on purpose": {
+        "meaning": "cố ý",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in general": {
+        "meaning": "nhìn chung",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in comparison with": {
+        "meaning": "so sánh với",
+        "correct": 1,
+        "wrong": 0
+    },
+    "in memory of": {
+        "meaning": "để tưởng nhớ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on the verge of": {
+        "meaning": "trên bờ vực",
+        "correct": 1,
+        "wrong": 0
+    },
+    "by means of": {
+        "meaning": "bằng cách",
+        "correct": 0,
+        "wrong": 0
+    },
+    "a hot potato": {
+        "meaning": "vấn đề nan giải",
+        "correct": 0,
+        "wrong": 0
+    },
+    "at the eleventh hour": {
+        "meaning": "vào phút chót",
+        "correct": 0,
+        "wrong": 0
+    },
+    "burn the midnight oil": {
+        "meaning": "thức khuya",
+        "correct": 0,
+        "wrong": 0
+    },
+    "by leaps and bounds": {
+        "meaning": "tiến bộ vượt bậc",
+        "correct": 0,
+        "wrong": 0
+    },
+    "cost an arm and a leg": {
+        "meaning": "rất đắt",
+        "correct": 0,
+        "wrong": 0
+    },
+    "hit the nail on the head": {
+        "meaning": "nói đúng trọng tâm",
+        "correct": 0,
+        "wrong": 0
+    },
+    "let the cat out of the bag": {
+        "meaning": "tiết lộ bí mật",
+        "correct": 0,
+        "wrong": 0
+    },
+    "once in a blue moon": {
+        "meaning": "hiếm khi",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on the tip of my tongue": {
+        "meaning": "sắp nhớ ra",
+        "correct": 0,
+        "wrong": 0
+    },
+    "piece of cake": {
+        "meaning": "rất dễ",
+        "correct": 0,
+        "wrong": 1
+    },
+    "spill the beans": {
+        "meaning": "tiết lộ bí mật",
+        "correct": 0,
+        "wrong": 0
+    },
+    "the last straw": {
+        "meaning": "giọt nước tràn ly",
+        "correct": 0,
+        "wrong": 0
+    },
+    "under the weather": {
+        "meaning": "không khỏe",
+        "correct": 0,
+        "wrong": 0
+    },
+    "weather the storm": {
+        "meaning": "vượt qua khó khăn",
+        "correct": 0,
+        "wrong": 0
+    },
+    "keep an eye on": {
+        "meaning": "để mắt tới",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in conclusion": {
+        "meaning": "tóm lại",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on the one hand": {
+        "meaning": "một mặt",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on the other hand": {
+        "meaning": "mặt khác",
+        "correct": 0,
+        "wrong": 0
+    },
+    "as a result": {
+        "meaning": "kết quả là",
+        "correct": 1,
+        "wrong": 0
+    },
+    "in addition to": {
+        "meaning": "ngoài ra",
+        "correct": 0,
+        "wrong": 0
+    },
+    "on account of": {
+        "meaning": "bởi vì",
+        "correct": 0,
+        "wrong": 0
+    },
+    "in contrast": {
+        "meaning": "ngược lại",
+        "correct": 1,
+        "wrong": 0
+    },
+    "with respect to": {
+        "meaning": "liên quan đến",
+        "correct": 0,
+        "wrong": 0
+    },
+    "take into account": {
+        "meaning": "cân nhắc",
+        "correct": 0,
+        "wrong": 0
+    },
+    "bear in mind": {
+        "meaning": "ghi nhớ",
+        "correct": 0,
+        "wrong": 0
+    },
+    "lose one's temper": {
+        "meaning": "nổi giận",
+        "correct": 0,
+        "wrong": 0
+    }
+}
