@@ -46,13 +46,13 @@ if not wrong_words:
     st.info("💡 Bạn có thể quay lại trang chủ để học từ mới, hoặc reset lại các từ sai để ôn tập lại từ đầu.")
     
     col_a, col_b = st.columns(2)
-    with col_a:
-        # TÍNH NĂNG MỚI: Reset lại các từ sai để học lại
+   with col_a:
+        # TÍNH NĂNG MỚI: Reset lại TẤT CẢ từ vựng để ôn tập
         if st.button("🔄 Luyện tập lại từ đầu", use_container_width=True):
-            # Tìm những từ đã từng bị sai (count_wrong + count_correct > 0) để đưa vào danh sách học lại
+            # Đưa toàn bộ từ vựng vào danh sách ôn tập (không cần điều kiện)
             for w in words:
-                if w.get("count_correct", 0) > 0 or w.get("count_wrong", 0) > 0:
-                    w["count_wrong"] = 1 
+                w["count_wrong"] = 1 
+            
             save_data(data)
             st.session_state.wrong_index = 0
             st.rerun()
