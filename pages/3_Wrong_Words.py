@@ -1,69 +1,118 @@
 import streamlit as st
-from utils.data_manager import load_data, save_data
+import json
+import random
 
-st.set_page_config(page_title="Review Wrong Words", page_icon="❌")
-st.title("❌ Ôn Tập Từ Sai")
+st.title("❌ Review Wrong Words")
 
-# 1. Tải dữ liệu
+
+# --- 1. HÀM ĐỌC & LƯU DATA.JSON ---
+def load_data():
+    try:
+        with open("data.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_data(data):
+    with open("data.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
 data = load_data()
-words = data.get("words", [])
 
-# 2. Lọc danh sách từ có count_wrong > 0
-wrong_words = [w for w in words if w.get("count_wrong", 0) > 0]
+# --- 2. LỌC DANH SÁCH CÁC TỪ BỊ SAI ---
+# Lấy những từ mà số lần 'wrong' > 0
+wrong_words_list = []
+for word, info in data.items():
+    if isinstance(info, dict) and info.get("wrong", 0) > 0:
+        wrong_words_list.append(word)
 
-# 3. Quản lý index an toàn
-if "wrong_index" not in st.session_state:
-    st.session_state.wrong_index = 0
+if not wrong_words_list:
+    st.success("🎉 Tuyệt vời! Bạn không có từ nào trong danh sách bị sai cả.")
+    st.stop()
 
-# Nếu danh sách sai trống
-if not wrong_words:
-    st.warning("📭 Hiện tại danh sách từ sai đang trống.")
-    
-    # Nút ép reset index và nạp lại toàn bộ từ sai
-    if st.button("🔄 Nạp lại danh sách từ sai", use_container_width=True):
-        for w in words:
-            w["count_wrong"] = 1
-        save_data(data)
-        # Xóa sạch session cũ để ép làm mới hoàn toàn
-        if "wrong_index" in st.session_state:
-            del st.session_state.wrong_index
+# --- 3. KHỞI TẠO TRẠNG THÁI KHÔNG LẶP TỪ BỊ SAI ---
+if "wrong_studied" not in st.session_state:
+    st.session_state.wrong_studied = []
+
+remaining_wrong = [w for w in wrong_words_list if w not in st.session_state.wrong_studied]
+
+# Nếu đã ôn hết danh sách từ sai trong phiên
+if not remaining_wrong:
+    st.balloons()
+    st.success("🎉 Bạn đã hoàn thành ôn tập lại toàn bộ danh sách từ sai!")
+    if st.button("Ôn lại từ sai lần nữa"):
+        st.session_state.wrong_studied = []
         st.rerun()
-else:
-    # Đảm bảo index không bị trôi ra ngoài độ dài mảng
-    if st.session_state.wrong_index >= len(wrong_words):
-        st.session_state.wrong_index = 0
+    st.stop()
 
-    total = len(wrong_words)
-    idx = st.session_state.wrong_index
-    curr = wrong_words[idx]
+# Chọn từ sai ngẫu nhiên an toàn
+if "current_wrong_word" not in st.session_state or st.session_state.current_wrong_word not in remaining_wrong:
+    st.session_state.current_wrong_word = random.choice(remaining_wrong)
 
-    # Thanh tiến trình
-    st.progress(min(1.0, max(0.0, (idx + 1) / total)))
-    st.write(f"Đang ôn từ: **{idx + 1}** / {total}")
+current_word = st.session_state.current_wrong_word
 
-    # Hiển thị thông tin từ vựng
-    st.subheader(curr.get('word', ''))
-    st.write(f"**Loại từ:** {curr.get('type', 'N/A')} | **Phiên âm:** {curr.get('pronunciation', 'N/A')}")
-    
-    with st.expander("Xem nghĩa"):
-        st.write(curr.get('meaning', 'N/A'))
-        if curr.get('example'):
-            st.write(f"Ví dụ: {curr.get('example')}")
+# --- 4. PROGRESS BAR THỐNG KÊ (ĐÃ FIX AN TOÀN TRÁNH LỖI ĐỎ) ---
+total_wrong_count = len(wrong_words_list)
+studied_count = len(st.session_state.wrong_studied)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("✅ Đã nhớ", use_container_width=True):
-            for w in words:
-                if w['word'] == curr['word']:
-                    w['count_wrong'] = 0
-                    w['count_correct'] = w.get('count_correct', 0) + 1
-                    break
-            save_data(data)
-            # Reset lại index về 0 để không bị lệch mảng khi bớt từ đi
-            st.session_state.wrong_index = 0
-            st.rerun()
-            
-    with col2:
-        if st.button("➡️ Bỏ qua", use_container_width=True):
-            st.session_state.wrong_index = (st.session_state.wrong_index + 1) % len(wrong_words)
-            st.rerun()
+# Ép giá trị tiến trình luôn nằm chuẩn trong khoảng [0.0, 1.0] để không bao giờ bị sập web
+progress = float(studied_count) / float(total_wrong_count) if total_wrong_count > 0 else 0.0
+progress = max(0.0, min(1.0, progress))
+
+st.progress(progress)
+st.write(f"Đã ôn tập: **{studied_count} / {total_wrong_count}** từ sai")
+
+# --- 5. HIỂN THỊ TỪ VỰNG & SHOW MEANING ---
+st.divider()
+st.subheader(f"Word: {current_word}")
+
+# Hiển thị số lần sai thực tế của từ này
+word_data = data.get(current_word, {})
+wrong_count = word_data.get("wrong", 0) if isinstance(word_data, dict) else 0
+correct_count = word_data.get("correct", 0) if isinstance(word_data, dict) else 0
+st.caption(f"📊 Thống kê từ này: **{correct_count}** đúng / **{wrong_count}** sai")
+
+# Show Meaning (tự đóng khi chuyển từ nhờ key động)
+with st.expander("👀 Show Meaning", expanded=False, key=f"expander_wrong_{current_word}"):
+    word_info = data.get(current_word, "")
+    if isinstance(word_info, dict):
+        meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
+    else:
+        meaning = str(word_info)
+    st.write(meaning)
+
+# --- 6. NÚT XỬ LÝ CORRECT / WRONG ---
+st.write("---")
+col1, col2 = st.columns(2)
+
+
+def handle_wrong_answer(is_correct):
+    if current_word not in st.session_state.wrong_studied:
+        st.session_state.wrong_studied.append(current_word)
+
+    if isinstance(data.get(current_word), dict):
+        if is_correct:
+            data[current_word]["correct"] = data[current_word].get("correct", 0) + 1
+            # Nếu trả lời đúng, trừ bớt 1 lần sai để khuyến khích
+            if data[current_word].get("wrong", 0) > 0:
+                data[current_word]["wrong"] -= 1
+        else:
+            data[current_word]["wrong"] = data[current_word].get("wrong", 0) + 1
+
+    save_data(data)
+    # Xóa từ hiện tại để ép random từ tiếp theo ở lần load sau
+    if "current_wrong_word" in st.session_state:
+        del st.session_state.current_wrong_word
+
+
+with col1:
+    if st.button("✅ Correct", use_container_width=True):
+        handle_wrong_answer(True)
+        st.rerun()
+
+with col2:
+    if st.button("❌ Wrong", use_container_width=True):
+        handle_wrong_answer(False)
+        st.rerun()
