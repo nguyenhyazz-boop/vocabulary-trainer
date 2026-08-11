@@ -1,84 +1,84 @@
 import streamlit as st
+from utils.auth_manager import login_user, register_user
 from utils.data_manager import load_data
 
-# =========================
-# Cấu hình trang
-# =========================
-st.set_page_config(
-    page_title="Vocabulary Trainer",
-    page_icon="🌿",
-    layout="wide"
-)
+st.set_page_config(page_title="Vocabulary Trainer", page_icon="🌿", layout="wide")
 
-# Custom CSS cho phong cách Chill / Minimalist
-st.markdown("""
-    <style>
-    /* Nền ứng dụng màu kem dịu mắt */
-    .stApp {
-        background-color: #FAF8F5;
-    }
-    
-    /* Khung Metric bo góc, có bóng nhẹ */
-    div[data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-        border: 1px solid #EAE6DF;
-    }
-    
-    /* Chỉnh kiểu chữ cho Tiêu đề */
-    .main-title {
-        font-size: 2.3rem;
-        font-weight: 700;
-        color: #2D3142;
-        margin-bottom: 0px;
-    }
-    .sub-title {
-        font-size: 1.05rem;
-        color: #6C757D;
-        margin-bottom: 25px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Khởi tạo session state cho user
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
-# =========================
-# Đọc dữ liệu
-# =========================
-data = load_data()
+st.title("🌱 Vocabulary Trainer")
 
-# =========================
-# Thống kê (Giữ nguyên logic, thêm .get để tránh lỗi KeyError)
-# =========================
-total_words = len(data)
+# --- KHI CHƯA ĐĂNG NHẬP ---
+if not st.session_state.logged_in:
+    tab1, tab2 = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký"])
 
-total_correct = sum(item.get("correct", 0) for item in data.values())
-total_wrong = sum(item.get("wrong", 0) for item in data.values())
+    with tab1:
+        st.subheader("Đăng nhập tài khoản")
+        user_input = st.text_input("Tên đăng nhập:", key="login_user").strip().lower()
+        pass_input = st.text_input("Mật khẩu:", type="password", key="login_pass")
+        
+        if st.button("Đăng nhập", type="primary", use_container_width=True):
+            if user_input and pass_input:
+                success, msg = login_user(user_input, pass_input)
+                if success:
+                    st.session_state.logged_in = True
+                    st.session_state.username = user_input
+                    st.success(f"Chào mừng {user_input} quay trở lại!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {msg}")
+            else:
+                st.warning("Vui lòng điền đầy đủ thông tin!")
 
-accuracy = (
-    total_correct / (total_correct + total_wrong) * 100
-    if (total_correct + total_wrong) > 0
-    else 0
-)
+    with tab2:
+        st.subheader("Tạo tài khoản mới")
+        reg_user = st.text_input("Tên đăng nhập:", key="reg_user").strip().lower()
+        reg_pass = st.text_input("Mật khẩu:", type="password", key="reg_pass")
+        reg_pass_confirm = st.text_input("Xác nhận mật khẩu:", type="password", key="reg_pass_confirm")
 
-# =========================
-# Giao diện
-# =========================
-st.markdown('<div class="main-title">🌿 Vocabulary Trainer</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Welcome to Version 1.0 of my vocabulary learning application!</div>', unsafe_allow_html=True)
+        if st.button("Đăng ký", use_container_width=True):
+            if not reg_user or not reg_pass:
+                st.warning("Vui lòng điền đầy đủ thông tin!")
+            elif reg_pass != reg_pass_confirm:
+                st.error("❌ Mật khẩu xác nhận không trùng khớp!")
+            else:
+                success, msg = register_user(reg_user, reg_pass)
+                if success:
+                    st.success("🎉 Đăng ký thành công! Hãy chuyển sang tab Đăng nhập.")
+                else:
+                    st.error(f"❌ {msg}")
 
-col1, col2, col3 = st.columns(3)
+    st.stop()
 
-with col1:
-    st.metric("📖 Total Words", total_words)
+# --- KHI ĐÃ ĐĂNG NHẬP THÀNH CÔNG ---
+st.sidebar.markdown(f"👤 Tài khoản: **{st.session_state.username}**")
+if st.sidebar.button("🚪 Đăng xuất"):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.rerun()
 
-with col2:
-    st.metric("✅ Correct", total_correct)
+# Đọc thống kê kho từ vựng riêng của User
+colloc_file = f"data_collocation_{st.session_state.username}.json"
+vocab_file = f"data_vocab_{st.session_state.username}.json"
 
-with col3:
-    st.metric("🎯 Accuracy", f"{accuracy:.1f}%")
+colloc_data = load_data(colloc_file)
+vocab_data = load_data(vocab_file)
+
+total_words = len(colloc_data) + len(vocab_data)
+
+st.markdown(f"### 👋 Xin chào, **{st.session_state.username}**!")
+st.caption("Góc nhỏ luyện tập từ vựng & collocations mỗi ngày.")
 
 st.divider()
 
-st.success("🚀 Version 1.0 is under development.")
-st.write("TEST")
+col1, col2, col3 = st.columns(3)
+col1.metric("🔗 Collocations", f"{len(colloc_data)} từ")
+col2.metric("🔤 Normal Vocab", f"{len(vocab_data)} từ")
+col3.metric("📖 Tổng từ vựng", f"{total_words} từ")
+
+st.divider()
+st.info("👈 Chọn một chức năng bên thanh menu bên trái để bắt đầu học!")
