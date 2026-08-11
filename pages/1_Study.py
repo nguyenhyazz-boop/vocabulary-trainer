@@ -32,6 +32,13 @@ st.markdown("""
 
 st.title("📖 Study Vocabulary")
 
+# Kiểm tra đăng nhập
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.stop()
+
+username = st.session_state.username
+
 if "study_mode" not in st.session_state:
     st.session_state.study_mode = "collocation"
 
@@ -53,19 +60,19 @@ with col_btn2:
 
 st.divider()
 
-# --- 2. XÁC ĐỊNH FILE DỮ LIỆU ---
+# --- 2. XÁC ĐỊNH FILE DỮ LIỆU CÁ NHÂN CỦA USER ---
 if st.session_state.study_mode == "vocab":
-    data_file = "data_vocab.json"
+    data_file = f"data_vocab_{username}.json"
     mode_title = "🔤 Normal Vocabulary"
 else:
-    data_file = "data.json"
+    data_file = f"data_collocation_{username}.json"
     mode_title = "🔗 Collocations & Phrases"
 
 data = load_data(data_file)
 all_words = list(data.keys())
 
 if not all_words:
-    st.warning(f"Kho từ vựng **{mode_title}** (`{data_file}`) hiện chưa có dữ liệu!")
+    st.warning(f"Kho từ vựng **{mode_title}** của bạn hiện chưa có từ nào! Hãy vào mục **Library** để thêm từ vào nhé.")
     st.stop()
 
 # --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
@@ -113,7 +120,6 @@ with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_wo
         
         st.markdown(f"### 👉 **{meaning}**")
         
-        # Bổ sung dòng thông tin Loại từ & Chủ đề nếu có trong dữ liệu
         info_list = []
         if pos_tag:
             info_list.append(f"Loại từ: **{pos_tag}**")
@@ -149,6 +155,11 @@ def handle_answer(is_correct):
 with col1:
     if st.button("✅ Correct", use_container_width=True):
         handle_answer(True)
+        st.rerun()
+
+with col2:
+    if st.button("❌ Wrong", use_container_width=True):
+        handle_answer(False)
         st.rerun()
 
 with col2:
