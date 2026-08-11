@@ -108,10 +108,23 @@ with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_wo
     word_info = data[current_word]
     if isinstance(word_info, dict):
         meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
+        pos_tag = word_info.get("pos", "")
+        topic_tag = word_info.get("topic", "")
+        
+        st.markdown(f"### 👉 **{meaning}**")
+        
+        # Bổ sung dòng thông tin Loại từ & Chủ đề nếu có trong dữ liệu
+        info_list = []
+        if pos_tag:
+            info_list.append(f"Loại từ: **{pos_tag}**")
+        if topic_tag:
+            info_list.append(f"Chủ đề: **{topic_tag}**")
+            
+        if info_list:
+            st.caption(" ┆ ".join(info_list))
     else:
         meaning = str(word_info)
-    
-    st.markdown(f"### 👉 **{meaning}**")
+        st.markdown(f"### 👉 **{meaning}**")
 
 # --- 5. LƯU KẾT QUẢ ---
 st.write("---")
