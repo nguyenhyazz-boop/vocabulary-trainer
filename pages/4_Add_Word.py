@@ -4,7 +4,7 @@ from utils.data_manager import load_data, save_data
 st.set_page_config(page_title="Add Word - Vocabulary Trainer", page_icon="➕", layout="wide")
 
 st.title("➕ Thêm từ vựng mới")
-st.caption("Thêm từ mới vào kho dữ liệu tương ứng.")
+st.caption("Thêm từ vựng mới vào kho lưu trữ tương ứng.")
 
 with st.form("add_word_form", clear_on_submit=True):
     word = st.text_input("Từ vựng / Collocation (tiếng Anh):").strip().lower()
@@ -12,14 +12,14 @@ with st.form("add_word_form", clear_on_submit=True):
     
     target_repo = st.radio(
         "📂 Chọn kho lưu trữ:",
-        ["🔤 Normal Vocabulary (`data_vocab.json`)", "🔗 Collocations (`data_collocation.json`)"],
+        ["🔗 Collocations (`data.json`)", "🔤 Normal Vocabulary (`data_vocab.json`)"],
         horizontal=True
     )
     
     submitted = st.form_submit_button("💾 Lưu vào kho", use_container_width=True)
 
 if submitted:
-    target_file = "data_collocation.json" if "Collocations" in target_repo else "data_vocab.json"
+    target_file = "data.json" if "Collocations" in target_repo else "data_vocab.json"
     data = load_data(target_file)
     
     if not word or not meaning:
