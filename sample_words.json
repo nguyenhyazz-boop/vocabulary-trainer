@@ -1,1 +1,82 @@
-
+{
+    "burn the midnight oil": {
+        "meaning": "thức khuya học bài / làm việc",
+        "type": "collocation",
+        "topic": "Học tập & Giáo dục"
+    },
+    "hit the books": {
+        "meaning": "bắt đầu học tập chăm chỉ",
+        "type": "collocation",
+        "topic": "Học tập & Giáo dục"
+    },
+    "assignment": {
+        "meaning": "bài tập về nhà / bài luận",
+        "type": "vocab",
+        "topic": "Học tập & Giáo dục"
+    },
+    "simmer": {
+        "meaning": "ninh / hầm lửa nhỏ",
+        "type": "vocab",
+        "topic": "Ẩm thực & Nấu ăn"
+    },
+    "whip up a meal": {
+        "meaning": "nấu nhanh một bữa ăn",
+        "type": "collocation",
+        "topic": "Ẩm thực & Nấu ăn"
+    },
+    "prescription": {
+        "meaning": "đơn thuốc của bác sĩ",
+        "type": "vocab",
+        "topic": "Y tế & Bệnh viện"
+    },
+    "under the weather": {
+        "meaning": "cảm thấy mệt mỏi / bị ốm nhẹ",
+        "type": "collocation",
+        "topic": "Y tế & Bệnh viện"
+    },
+    "construction site": {
+        "meaning": "công trường xây dựng",
+        "type": "collocation",
+        "topic": "Công trường & Xây dựng"
+    },
+    "blueprint": {
+        "meaning": "bản thiết kế / bản vẽ kỹ thuật",
+        "type": "vocab",
+        "topic": "Công trường & Xây dựng"
+    },
+    "deadline": {
+        "meaning": "thời hạn hoàn thành công việc",
+        "type": "vocab",
+        "topic": "Công việc & Văn phòng"
+    },
+    "meet a deadline": {
+        "meaning": "hoàn thành công việc đúng hạn",
+        "type": "collocation",
+        "topic": "Công việc & Văn phòng"
+    },
+    "keep in touch": {
+        "meaning": "giữ liên lạc với ai đó",
+        "type": "collocation",
+        "topic": "Giao tiếp hàng ngày"
+    },
+    "itinerary": {
+        "meaning": "lịch trình chuyến đi",
+        "type": "vocab",
+        "topic": "Du lịch & Di chuyển"
+    },
+    "book in advance": {
+        "meaning": "đặt chỗ / vé trước",
+        "type": "collocation",
+        "topic": "Du lịch & Di chuyển"
+    },
+    "receipt": {
+        "meaning": "hóa đơn thanh toán",
+        "type": "vocab",
+        "topic": "Mua sắm & Chi tiêu"
+    },
+    "bargain": {
+        "meaning": "món hời / sự mặc cả",
+        "type": "vocab",
+        "topic": "Mua sắm & Chi tiêu"
+    }
+}
