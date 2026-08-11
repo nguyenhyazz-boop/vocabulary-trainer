@@ -41,13 +41,13 @@ col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
-    if st.button("🔗 Collocations (`data.json`)", type=type_colloc, use_container_width=True):
+    if st.button("🔗 Collocations", type=type_colloc, use_container_width=True):
         st.session_state.study_mode = "collocation"
         st.rerun()
 
 with col_btn2:
     type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
-    if st.button("🔤 Normal Vocabulary (`data_vocab.json`)", type=type_normal, use_container_width=True):
+    if st.button("🔤 Normal Vocabulary", type=type_normal, use_container_width=True):
         st.session_state.study_mode = "vocab"
         st.rerun()
 
