@@ -1,22 +1,15 @@
 import json
+import os
 
-DATA_FILE = "data.json"
+def load_data(file_path="data.json"):
+    if not os.path.exists(file_path):
+        return {}
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-
-def load_data():
-    """Đọc toàn bộ dữ liệu."""
-
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
-
-
-def save_data(data):
-    """Lưu dữ liệu."""
-
-    with open(DATA_FILE, "w", encoding="utf-8") as file:
-        json.dump(
-            data,
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
+def save_data(data, file_path="data.json"):
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
