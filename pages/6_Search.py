@@ -1,55 +1,73 @@
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Search & Edit - Vocabulary Trainer", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Library - Vocabulary Trainer", page_icon="📚", layout="wide")
 
-st.title("🔍 Tìm kiếm & Quản lý từ vựng")
-st.caption("Gõ từng chữ cái để lọc danh sách từ vựng theo thời gian thực.")
+st.title("📚 Ngân hàng từ vựng mẫu")
+st.caption("Chọn những từ bạn chưa biết theo chủ đề để thêm vào bộ sưu tập cá nhân!")
 
-data = load_data()
-
-if not data:
-    st.info("Chưa có từ vựng nào trong dữ liệu.")
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
-# Ô nhập từ khóa (Tự động lọc ngay khi gõ từng ký tự)
-search_query = st.text_input("🔎 Nhập từ vựng hoặc nghĩa (ví dụ: gõ 'd' để xem các từ liên quan):", "").strip().lower()
+username = st.session_state.username
 
-# Lọc danh sách từ theo thời gian thực
-if search_query:
-    # Ưu tiên các từ BẮT ĐẦU BẰNG từ khóa trước, sau đó mới đến các từ CHỨA từ khóa
-    starts_with = {w: m for w, m in data.items() if w.lower().startswith(search_query)}
-    contains = {
-        w: m for w, m in data.items() 
-        if search_query in w.lower() or search_query in m.get("meaning", "").lower()
-    }
-    # Gộp kết quả (các từ bắt đầu bằng ký tự gõ vào sẽ đứng đầu)
-    filtered_words = {**starts_with, **contains}
-else:
-    filtered_words = data
+# Đọc kho mẫu và kho cá nhân của user
+sample_data = load_data("sample_words.json")
+user_colloc = load_data(f"data_collocation_{username}.json")
+user_vocab = load_data(f"data_vocab_{username}.json")
 
-# Hiển thị số lượng kết quả tìm thấy
-st.write(f"Tìm thấy **{len(filtered_words)}** từ vựng:")
+user_all_words = {**user_colloc, **user_vocab}
 
+if not sample_data:
+    st.info("Chưa có từ vựng mẫu nào trong hệ thống.")
+    st.stop()
+
+# --- 1. BỘ LỌC THEO CHỦ ĐỀ ---
+topics = list(set(item.get("topic", "Khác") for item in sample_data.values() if isinstance(item, dict)))
+selected_topic = st.selectbox("🎯 Chọn chủ đề bạn muốn xem:", ["Tất cả chủ đề"] + topics)
+
+# Ô tìm kiếm từ vựng
+search_query = st.text_input("🔎 Tìm từ cụ thể:", "").strip().lower()
+
+# Lọc danh sách từ
+filtered_words = {}
+for word, item in sample_data.items():
+    if isinstance(item, dict):
+        match_topic = (selected_topic == "Tất cả chủ đề") or (item.get("topic") == selected_topic)
+        match_search = (search_query in word.lower()) or (search_query in item.get("meaning", "").lower())
+        if match_topic and match_search:
+            filtered_words[word] = item
+
+st.write(f"Tìm thấy **{len(filtered_words)}** từ vựng mẫu:")
 st.divider()
 
-# Hiển thị kết quả dưới dạng danh sách
+# --- 2. HIỂN THỊ DANH SÁCH & NÚT THÊM ---
 for word, item in filtered_words.items():
-    with st.expander(f"📌 **{word}** — *{item.get('meaning', '')}*"):
-        col1, col2 = st.columns([3, 1])
+    meaning = item.get("meaning", "")
+    w_type = item.get("type", "vocab")
+    w_topic = item.get("topic", "Chung")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        type_badge = "🔗 Collocation" if w_type == "collocation" else "🔤 Vocab"
+        st.markdown(f"📌 **{word}** (`{type_badge}` | 🏷️ *{w_topic}*) — **{meaning}**")
         
-        with col1:
-            new_meaning = st.text_input("Chỉnh sửa nghĩa:", value=item.get("meaning", ""), key=f"edit_{word}")
-            if st.button("💾 Cập nhật", key=f"btn_save_{word}"):
-                data[word]["meaning"] = new_meaning.strip()
-                save_data(data)
-                st.success(f"Đã cập nhật nghĩa cho từ **{word}**!")
-                st.rerun()
+    with col2:
+        if word in user_all_words:
+            st.success("✅ Đã có trong bộ học")
+        else:
+            if st.button("➕ Thêm vào bộ học", key=f"add_{word}", type="primary"):
+                target_file = f"data_collocation_{username}.json" if w_type == "collocation" else f"data_vocab_{username}.json"
+                user_repo = load_data(target_file)
                 
-        with col2:
-            st.write("---")
-            if st.button("🗑️ Xóa từ này", key=f"btn_del_{word}", type="primary"):
-                del data[word]
-                save_data(data)
-                st.warning(f"Đã xóa từ **{word}** khỏi danh sách!")
+                user_repo[word] = {
+                    "meaning": meaning,
+                    "topic": w_topic,
+                    "correct": 0,
+                    "wrong": 0
+                }
+                save_data(user_repo, target_file)
+                st.success(f"Đã thêm **{word}**!")
                 st.rerun()
