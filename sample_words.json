@@ -49,7 +49,6 @@
     "memorize": {"meaning": "học thuộc lòng", "type": "vocab", "topic": "Học tập & Giáo dục", "pos": "verb"},
     "analyze": {"meaning": "phân tích", "type": "vocab", "topic": "Học tập & Giáo dục", "pos": "verb"},
     "comprehend": {"meaning": "lĩnh hội / hiểu thấu", "type": "vocab", "topic": "Học tập & Giáo dục", "pos": "verb"},
-
     "burn the midnight oil": {"meaning": "thức khuya học bài / làm việc", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "idiom"},
     "hit the books": {"meaning": "bắt đầu học tập chăm chỉ", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "phrase"},
     "pass with flying colors": {"meaning": "đỗ kỳ thi điểm cao", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "phrase"},
@@ -100,7 +99,6 @@
     "take advantage of": {"meaning": "tận dụng cơ hội", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "phrase"},
     "take pride in": {"meaning": "tự hào về", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "phrase"},
     "by leaps and bounds": {"meaning": "tiến bộ vượt bậc", "type": "collocation", "topic": "Học tập & Giáo dục", "pos": "idiom"},
-
     "recipe": {"meaning": "công thức nấu ăn", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "noun"},
     "ingredient": {"meaning": "nguyên liệu", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "noun"},
     "simmer": {"meaning": "ninh / hầm lửa nhỏ", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "verb"},
@@ -151,7 +149,6 @@
     "knead": {"meaning": "nhào bột", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "verb"},
     "chef": {"meaning": "đầu bếp chính", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "noun"},
     "bakery": {"meaning": "tiệm bánh", "type": "vocab", "topic": "Ẩm thực & Nấu ăn", "pos": "noun"},
-
     "whip up a meal": {"meaning": "nấu nhanh một bữa", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "phrase"},
     "grab a bite": {"meaning": "ăn nhanh cái gì đó", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "phrase"},
     "spoil one's appetite": {"meaning": "làm mất cảm giác ngon miệng", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "phrase"},
@@ -202,7 +199,6 @@
     "fine dining": {"meaning": "nhà hàng cao cấp", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "noun phrase"},
     "go off": {"meaning": "(thức ăn) bị thiu", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "phrasal verb"},
     "cut down on": {"meaning": "cắt giảm ăn uống", "type": "collocation", "topic": "Ẩm thực & Nấu ăn", "pos": "phrasal verb"},
-
     "prescription": {"meaning": "đơn thuốc", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "noun"},
     "symptom": {"meaning": "triệu chứng", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "noun"},
     "diagnosis": {"meaning": "sự chẩn đoán", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "noun"},
@@ -253,7 +249,6 @@
     "recovery": {"meaning": "sự hồi phục", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "noun"},
     "examine": {"meaning": "thăm khám", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "verb"},
     "diagnose": {"meaning": "chẩn đoán", "type": "vocab", "topic": "Y tế & Bệnh viện", "pos": "verb"},
-
     "under the weather": {"meaning": "thấy mệt / ốm nhẹ", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "idiom"},
     "take medicine": {"meaning": "uống thuốc", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "phrase"},
     "emergency room": {"meaning": "phòng cấp cứu", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "noun phrase"},
@@ -304,7 +299,6 @@
     "be immune to": {"meaning": "miễn dịch với", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "phrase"},
     "lose weight": {"meaning": "giảm cân", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "phrase"},
     "gain weight": {"meaning": "tăng cân", "type": "collocation", "topic": "Y tế & Bệnh viện", "pos": "phrase"},
-
     "blueprint": {"meaning": "bản thiết kế", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "noun"},
     "scaffolding": {"meaning": "giàn giáo", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "noun"},
     "concrete": {"meaning": "bê tông", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "noun"},
@@ -355,7 +349,6 @@
     "reinforced": {"meaning": "được gia cố", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "adjective"},
     "prefabricated": {"meaning": "đúc sẵn", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "adjective"},
     "durable": {"meaning": "bền vững", "type": "vocab", "topic": "Công trường & Xây dựng", "pos": "adjective"},
-
     "construction site": {"meaning": "công trường xây dựng", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "noun phrase"},
     "safety helmet": {"meaning": "mũ bảo hộ", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "noun phrase"},
     "lay the foundation": {"meaning": "đặt nền móng", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "phrase"},
@@ -451,7 +444,6 @@
     "productive": {"meaning": "năng suất", "type": "vocab", "topic": "Công việc & Văn phòng", "pos": "adjective"},
     "efficient": {"meaning": "hiệu quả", "type": "vocab", "topic": "Công việc & Văn phòng", "pos": "adjective"},
     "competent": {"meaning": "có năng lực", "type": "vocab", "topic": "Công việc & Văn phòng", "pos": "adjective"},
-
     "meet a deadline": {"meaning": "kịp hạn chót", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "phrase"},
     "call it a day": {"meaning": "dừng làm việc", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "idiom"},
     "work overtime": {"meaning": "làm tăng ca", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "phrase"},
@@ -502,7 +494,6 @@
     "bear in mind": {"meaning": "ghi nhớ trong đầu", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "phrase"},
     "as a result": {"meaning": "kết quả là", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "phrase"},
     "in conclusion": {"meaning": "tóm lại kết luận", "type": "collocation", "topic": "Công việc & Văn phòng", "pos": "prepositional phrase"},
-
     "apologize": {"meaning": "xin lỗi", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "verb"},
     "appreciate": {"meaning": "trân trọng / cảm kích", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "verb"},
     "attitude": {"meaning": "thái độ", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "noun"},
@@ -553,7 +544,6 @@
     "rudely": {"meaning": "thô lỗ", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "adverb"},
     "empathic": {"meaning": "đồng cảm", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "adjective"},
     "sincere": {"meaning": "chân thành", "type": "vocab", "topic": "Giao tiếp hàng ngày", "pos": "adjective"},
-
     "keep in touch": {"meaning": "giữ liên lạc", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "phrase"},
     "make small talk": {"meaning": "trò chuyện xã giao", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "phrase"},
     "catch up with": {"meaning": "cập nhật tin tức với ai", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "phrasal verb"},
@@ -604,7 +594,6 @@
     "let the cat out of the bag": {"meaning": "tiết lộ bí mật", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "idiom"},
     "once in a blue moon": {"meaning": "hiếm khi xảy ra", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "idiom"},
     "tip of my tongue": {"meaning": "chực trào trên đầu lưỡi", "type": "collocation", "topic": "Giao tiếp hàng ngày", "pos": "idiom"},
-
     "itinerary": {"meaning": "lịch trình chuyến đi", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "noun"},
     "destination": {"meaning": "điểm đến", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "noun"},
     "accommodation": {"meaning": "chỗ ở", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "noun"},
@@ -655,7 +644,6 @@
     "navigate": {"meaning": "định vị dẫn đường", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "verb"},
     "commute": {"meaning": "đi lại hằng ngày", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "verb"},
     "delayed": {"meaning": "bị hoãn", "type": "vocab", "topic": "Du lịch & Di chuyển", "pos": "adjective"},
-
     "book in advance": {"meaning": "đặt chỗ trước", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "phrase"},
     "board the plane": {"meaning": "lên máy bay", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "phrase"},
     "hit the road": {"meaning": "lên đường khởi hành", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "idiom"},
@@ -706,7 +694,6 @@
     "hold up": {"meaning": "làm trì hoãn chuyến đi", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "phrasal verb"},
     "turn up": {"meaning": "xuất hiện đến nơi", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "phrasal verb"},
     "catch up with": {"meaning": "bắt kịp đoàn đi", "type": "collocation", "topic": "Du lịch & Di chuyển", "pos": "phrasal verb"},
-
     "receipt": {"meaning": "hóa đơn thanh toán", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "noun"},
     "discount": {"meaning": "sự giảm giá", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "noun"},
     "budget": {"meaning": "ngân sách", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "noun"},
@@ -757,7 +744,6 @@
     "deposit": {"meaning": "đặt cọc / gửi tiền", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "verb"},
     "withdraw": {"meaning": "rút tiền", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "verb"},
     "balance": {"meaning": "số dư tài khoản", "type": "vocab", "topic": "Mua sắm & Chi tiêu", "pos": "noun"},
-
     "cost an arm and a leg": {"meaning": "rất đắt đỏ tốn kém", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "idiom"},
     "pay in cash": {"meaning": "thanh toán bằng tiền mặt", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "phrase"},
     "window shopping": {"meaning": "đi ngắm đồ chứ không mua", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"},
@@ -807,7 +793,7 @@
     "cheap skate": {"meaning": "kẻ keo kiệt bủn xỉn", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"},
     "price tag": {"meaning": "mác ghi giá tiền", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"},
     "cash advance": {"meaning": "ứng tiền mặt", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"},
-    "interest rate": {"meaning": "lãi suất", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"}
+    "interest rate": {"meaning": "lãi suất", "type": "collocation", "topic": "Mua sắm & Chi tiêu", "pos": "noun phrase"},
     "set up": {"meaning": "thiết lập công trường", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "phrasal verb"},
     "out of order": {"meaning": "bị hỏng (máy móc)", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "prepositional phrase"},
     "weather the storm": {"meaning": "vượt qua khó khăn", "type": "collocation", "topic": "Công trường & Xây dựng", "pos": "idiom"},
