@@ -1,87 +1,144 @@
+import random
 import streamlit as st
-from utils.auth_manager import login_user, register_user
-from utils.data_manager import load_data
+from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Vocabulary Trainer", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="Study - Vocabulary Trainer", page_icon="📖", layout="wide")
 
-# Khởi tạo session state cho user
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
+st.markdown("""
+    <style>
+    .flashcard-box {
+        background-color: #FFFFFF;
+        padding: 30px;
+        border-radius: 18px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+        border: 1px solid #EAE6DF;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .card-label {
+        font-size: 0.95rem;
+        color: #8C8C8C;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .card-word {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #2D3142;
+        margin-top: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-st.title("🌱 Vocabulary Trainer")
+st.title("📖 Study Vocabulary")
 
-# --- KHI CHƯA ĐĂNG NHẬP ---
-if not st.session_state.logged_in:
-    tab1, tab2 = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký"])
+if "study_mode" not in st.session_state:
+    st.session_state.study_mode = "collocation"
 
-    with tab1:
-        st.subheader("Đăng nhập tài khoản")
-        user_input = st.text_input("Tên đăng nhập:", key="login_user").strip().lower()
-        pass_input = st.text_input("Mật khẩu:", type="password", key="login_pass")
-        
-        if st.button("Đăng nhập", type="primary", use_container_width=True):
-            if user_input and pass_input:
-                success, msg = login_user(user_input, pass_input)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.username = user_input
-                    st.success(f"Chào mừng {user_input} quay trở lại!")
-                    st.rerun()
-                else:
-                    st.error(f"❌ {msg}")
-            else:
-                st.warning("Vui lòng điền đầy đủ thông tin!")
+# --- 1. NÚT CHỌN KHO TỪ VỰNG ---
+st.write("📌 **Chọn kho từ vựng bạn muốn học:**")
+col_btn1, col_btn2 = st.columns(2)
 
-    with tab2:
-        st.subheader("Tạo tài khoản mới")
-        reg_user = st.text_input("Tên đăng nhập:", key="reg_user").strip().lower()
-        reg_pass = st.text_input("Mật khẩu:", type="password", key="reg_pass")
-        reg_pass_confirm = st.text_input("Xác nhận mật khẩu:", type="password", key="reg_pass_confirm")
+with col_btn1:
+    type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
+    if st.button("🔗 Collocations (`data.json`)", type=type_colloc, use_container_width=True):
+        st.session_state.study_mode = "collocation"
+        st.rerun()
 
-        if st.button("Đăng ký", use_container_width=True):
-            if not reg_user or not reg_pass:
-                st.warning("Vui lòng điền đầy đủ thông tin!")
-            elif reg_pass != reg_pass_confirm:
-                st.error("❌ Mật khẩu xác nhận không trùng khớp!")
-            else:
-                success, msg = register_user(reg_user, reg_pass)
-                if success:
-                    st.success("🎉 Đăng ký thành công! Hãy chuyển sang tab Đăng nhập.")
-                else:
-                    st.error(f"❌ {msg}")
+with col_btn2:
+    type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
+    if st.button("🔤 Normal Vocabulary (`data_vocab.json`)", type=type_normal, use_container_width=True):
+        st.session_state.study_mode = "vocab"
+        st.rerun()
 
+st.divider()
+
+# --- 2. XÁC ĐỊNH FILE DỮ LIỆU ---
+if st.session_state.study_mode == "vocab":
+    data_file = "data_vocab.json"
+    mode_title = "🔤 Normal Vocabulary"
+else:
+    data_file = "data.json"
+    mode_title = "🔗 Collocations & Phrases"
+
+data = load_data(data_file)
+all_words = list(data.keys())
+
+if not all_words:
+    st.warning(f"Kho từ vựng **{mode_title}** (`{data_file}`) hiện chưa có dữ liệu!")
     st.stop()
 
-# --- KHI ĐÃ ĐĂNG NHẬP THÀNH CÔNG ---
-st.sidebar.markdown(f"👤 Tài khoản: **{st.session_state.username}**")
-if st.sidebar.button("🚪 Đăng xuất"):
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-    st.rerun()
+# --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
+if "studied_words" not in st.session_state:
+    st.session_state.studied_words = []
 
-# Đọc thống kê kho từ vựng riêng của User
-colloc_file = f"data_collocation_{st.session_state.username}.json"
-vocab_file = f"data_vocab_{st.session_state.username}.json"
+remaining_words = [w for w in all_words if w not in st.session_state.studied_words]
 
-colloc_data = load_data(colloc_file)
-vocab_data = load_data(vocab_file)
+if not remaining_words:
+    st.balloons()
+    st.success(f"🎉 Bạn đã hoàn thành toàn bộ từ vựng trong kho **{mode_title}**!")
+    if st.button("🔄 Học lại kho này từ đầu", use_container_width=True):
+        st.session_state.studied_words = [w for w in st.session_state.studied_words if w not in all_words]
+        st.rerun()
+    st.stop()
 
-total_words = len(colloc_data) + len(vocab_data)
+if ("current_word" not in st.session_state 
+    or st.session_state.current_word in st.session_state.studied_words
+    or st.session_state.current_word not in all_words):
+    st.session_state.current_word = random.choice(remaining_words)
 
-st.markdown(f"### 👋 Xin chào, **{st.session_state.username}**!")
-st.caption("Góc nhỏ luyện tập từ vựng & collocations mỗi ngày.")
+current_word = st.session_state.current_word
 
-st.divider()
+# --- 4. HIỂN THỊ TỪ VỰNG ---
+total_words = len(all_words)
+studied_count = len([w for w in all_words if w in st.session_state.studied_words])
 
-col1, col2, col3 = st.columns(3)
-col1.metric("🔗 Collocations", f"{len(colloc_data)} từ")
-col2.metric("🔤 Normal Vocab", f"{len(vocab_data)} từ")
-col3.metric("📖 Tổng từ vựng", f"{total_words} từ")
+progress = studied_count / total_words if total_words > 0 else 0
+st.progress(progress)
+st.caption(f"Tiến độ kho ({mode_title}): **{studied_count} / {total_words}** từ")
 
-st.divider()
-st.info("👈 Chọn một chức năng bên thanh menu bên trái để bắt đầu học!")
+st.markdown(f"""
+    <div class="flashcard-box">
+        <div class="card-label">{mode_title}</div>
+        <div class="card-word">{current_word}</div>
+    </div>
+""", unsafe_allow_html=True)
+
+with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_word}"):
+    word_info = data[current_word]
+    if isinstance(word_info, dict):
+        meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
+    else:
+        meaning = str(word_info)
+    
+    st.markdown(f"### 👉 **{meaning}**")
+
+# --- 5. LƯU KẾT QUẢ ---
+st.write("---")
+col1, col2 = st.columns(2)
+
+def handle_answer(is_correct):
+    st.session_state.studied_words.append(current_word)
+
+    if isinstance(data[current_word], dict):
+        if "correct" not in data[current_word]:
+            data[current_word]["correct"] = 0
+        if "wrong" not in data[current_word]:
+            data[current_word]["wrong"] = 0
+
+        if is_correct:
+            data[current_word]["correct"] += 1
+        else:
+            data[current_word]["wrong"] += 1
+
+        save_data(data, data_file)
+
+with col1:
+    if st.button("✅ Correct", use_container_width=True):
+        handle_answer(True)
+        st.rerun()
+
+with col2:
     if st.button("❌ Wrong", use_container_width=True):
         handle_answer(False)
         st.rerun()
