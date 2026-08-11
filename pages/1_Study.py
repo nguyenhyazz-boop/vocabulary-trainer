@@ -32,45 +32,43 @@ st.markdown("""
 
 st.title("📖 Study Vocabulary")
 
-# Khởi tạo chế độ mặc định
 if "study_mode" not in st.session_state:
-    st.session_state.study_mode = "vocab"
+    st.session_state.study_mode = "collocation"
 
-# --- 1. HAI NÚT BẤM CHỌN KHO TỪ VỰNG ---
+# --- 1. NÚT CHỌN KHO TỪ VỰNG ---
 st.write("📌 **Chọn kho từ vựng bạn muốn học:**")
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
-    type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
-    if st.button("🔤 Normal Vocabulary Kho (`data_vocab.json`)", type=type_normal, use_container_width=True):
-        st.session_state.study_mode = "vocab"
+    type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
+    if st.button("🔗 Collocations (`data.json`)", type=type_colloc, use_container_width=True):
+        st.session_state.study_mode = "collocation"
         st.rerun()
 
 with col_btn2:
-    type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
-    if st.button("🔗 Collocations Kho (`data_collocation.json`)", type=type_colloc, use_container_width=True):
-        st.session_state.study_mode = "collocation"
+    type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
+    if st.button("🔤 Normal Vocabulary (`data_vocab.json`)", type=type_normal, use_container_width=True):
+        st.session_state.study_mode = "vocab"
         st.rerun()
 
 st.divider()
 
-# --- 2. XÁC ĐỊNH FILE DỮ LIỆU ĐẦU VÀO ---
-if st.session_state.study_mode == "collocation":
-    data_file = "data_collocation.json"
-    mode_title = "🔗 Collocations & Phrases"
-else:
+# --- 2. XÁC ĐỊNH FILE DỮ LIỆU ---
+if st.session_state.study_mode == "vocab":
     data_file = "data_vocab.json"
     mode_title = "🔤 Normal Vocabulary"
+else:
+    data_file = "data.json"
+    mode_title = "🔗 Collocations & Phrases"
 
-# Đọc dữ liệu từ file riêng biệt được chọn
 data = load_data(data_file)
 all_words = list(data.keys())
 
 if not all_words:
-    st.warning(f"Kho từ vựng **{mode_title}** (`{data_file}`) hiện đang trống!")
+    st.warning(f"Kho từ vựng **{mode_title}** (`{data_file}`) hiện chưa có dữ liệu!")
     st.stop()
 
-# --- 3. TRẠNG THÁI HỌC VÀ KHÔNG LẶP TỪ ---
+# --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
 if "studied_words" not in st.session_state:
     st.session_state.studied_words = []
 
@@ -84,7 +82,6 @@ if not remaining_words:
         st.rerun()
     st.stop()
 
-# Chọn từ tiếp theo
 if ("current_word" not in st.session_state 
     or st.session_state.current_word in st.session_state.studied_words
     or st.session_state.current_word not in all_words):
@@ -92,7 +89,7 @@ if ("current_word" not in st.session_state
 
 current_word = st.session_state.current_word
 
-# --- 4. TIẾN ĐỘ VÀ HIỂN THỊ ---
+# --- 4. HIỂN THỊ TỪ VỰNG ---
 total_words = len(all_words)
 studied_count = len([w for w in all_words if w in st.session_state.studied_words])
 
@@ -116,7 +113,7 @@ with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_wo
     
     st.markdown(f"### 👉 **{meaning}**")
 
-# --- 5. XỬ LÝ LƯU KẾT QUẢ VÀO ĐÚNG FILE KHO TƯƠNG ỨNG ---
+# --- 5. LƯU KẾT QUẢ ---
 st.write("---")
 col1, col2 = st.columns(2)
 
@@ -134,7 +131,6 @@ def handle_answer(is_correct):
         else:
             data[current_word]["wrong"] += 1
 
-        # Lưu chính xác vào file JSON tương ứng
         save_data(data, data_file)
 
 with col1:
