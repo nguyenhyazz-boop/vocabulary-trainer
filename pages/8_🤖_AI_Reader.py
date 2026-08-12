@@ -74,15 +74,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     4. Cuối bài, hãy cung cấp danh sách từ vựng đã dùng kèm nghĩa tiếng Việt ngắn gọn.
     """
 
-    with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
-        # Thử danh sách các model chuẩn nhất của Gemini
-        models_to_try = [
-            "gemini-1.5-flash",
-            "gemini-2.5-flash",
-            "gemini-1.5-pro",
-            "gemini-pro"
-        ]
-
+    with st.spinner("🤖 Đang quét danh sách Model Gemini và tạo bài viết cho bạn..."):
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{
@@ -90,11 +82,32 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
             }]
         }
 
+        # BƯỚC A: TỰ ĐỘNG HỎI GOOGLE DANH SÁCH MODEL ĐANG HỖ TRỢ DẠNG GENERATECONTENT
+        list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
+        working_models = []
+        
+        try:
+            list_res = requests.get(list_url, timeout=10)
+            if list_res.status_code == 200:
+                models_info = list_res.json().get("models", [])
+                for m in models_info:
+                    methods = m.get("supportedGenerationMethods", [])
+                    if "generateContent" in methods:
+                        # Lấy tên model ngắn gọn (bỏ chữ "models/")
+                        name = m.get("name", "").replace("models/", "")
+                        working_models.append(name)
+        except Exception:
+            pass
+
+        # Nếu không lấy được danh sách động, gán danh sách dự phòng chuẩn
+        if not working_models:
+            working_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+
+        # BƯỚC B: GỬI REQUEST ĐẾN MODEL TÌM ĐƯỢC
         success = False
         last_error = ""
 
-        # Lặp qua từng tên model để gọi API
-        for model_name in models_to_try:
+        for model_name in working_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_api_key}"
             try:
                 res = requests.post(url, json=payload, headers=headers, timeout=30)
