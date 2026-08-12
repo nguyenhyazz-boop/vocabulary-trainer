@@ -73,11 +73,11 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     """
 
     with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
-        # Danh sách các model Gemini hiện đại nhất để thử lần lượt
+        # Danh sách tên model chuẩn xác theo tài liệu Google API v1beta
         models_to_try = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash-latest"
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash-exp"
         ]
 
         headers = {"Content-Type": "application/json"}
@@ -90,7 +90,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
         success = False
         last_error = ""
 
-        # Lặp qua từng model cho đến khi gọi thành công
+        # Lặp qua từng model cho đến khi thành công
         for model_name in models_to_try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key.strip()}"
             try:
