@@ -6,7 +6,7 @@ from utils.data_manager import load_data
 st.set_page_config(page_title="AI Reading Assistant - Vocabulary Trainer", page_icon="🤖", layout="wide")
 
 st.title("🤖 AI Reading Assistant")
-st.caption("Tạo bài đọc hiểu / đoạn văn thực hành từ chính các từ vựng bạn đã thuộc!")
+st.caption("Tùy chọn danh sách từ vựng cá nhân để AI tạo bài đọc & bài tập thực hành!")
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -31,39 +31,61 @@ vocab_data = load_data(f"data_vocab_{username}.json")
 
 user_all_words = list({**colloc_data, **vocab_data}.keys())
 
-if len(user_all_words) < 5:
-    st.warning("⚠️ Bạn cần có ít nhất 5 từ vựng trong kho cá nhân để AI tạo bài đọc. Hãy sang mục **Library** để thêm từ trước nhé!")
+if not user_all_words:
+    st.warning("⚠️ Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục **Library** để chọn thêm từ trước nhé!")
     st.stop()
 
 st.divider()
 
-# --- 3. CHỌN SỐ LƯỢNG TỪ VÀ TẠO BÀI ĐỌC ---
-st.subheader("🎯 Thiết lập bài tập AI")
+# --- 3. TÙY CHỌN CHỌN TỪ VỰNG CỤ THỂ ---
+st.subheader("🎯 Chọn danh sách từ vựng muốn đưa vào bài")
 
-col_num, col_type = st.columns([1, 2])
+# Chọn danh sách từ bằng Multiselect
+selected_words = st.multiselect(
+    "Tích chọn các từ/cụm từ bạn muốn luyện tập:",
+    options=user_all_words,
+    default=user_all_words[:min(8, len(user_all_words))]  # Mặc định chọn sẵn 8 từ đầu tiên
+)
 
-with col_num:
-    num_words = st.slider("Số lượng từ vựng muốn đưa vào bài:", min_value=5, max_value=min(15, len(user_all_words)), value=min(10, len(user_all_words)))
+# Nút tiện ích hỗ trợ chọn nhanh
+col_quick1, col_quick2 = st.columns(2)
+with col_quick1:
+    if st.button("🎲 AI chọn ngẫu nhiên 5 từ cho tôi", use_container_width=True):
+        st.session_state.selected_words_override = random.sample(user_all_words, min(5, len(user_all_words)))
+        st.rerun()
 
-with col_type:
-    task_type = st.selectbox(
-        "Chọn dạng bài tập bạn muốn luyện:",
-        [
-            "📝 Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
-            "📖 Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
-            "💬 Đoạn hội thoại thực tế giữa 2 người"
-        ]
-    )
+with col_quick2:
+    if st.button("🎲 AI chọn ngẫu nhiên 10 từ cho tôi", use_container_width=True):
+        st.session_state.selected_words_override = random.sample(user_all_words, min(10, len(user_all_words)))
+        st.rerun()
 
+# Cập nhật danh sách nếu chọn nhanh
+if "selected_words_override" in st.session_state:
+    selected_words = st.session_state.selected_words_override
+    del st.session_state.selected_words_override
+
+st.write("")
+task_type = st.selectbox(
+    "Chọn dạng bài tập bạn muốn luyện:",
+    [
+        "📝 Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
+        "📖 Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
+        "💬 Đoạn hội thoại thực tế giữa 2 người"
+    ]
+)
+
+st.divider()
+
+# --- 4. GỬI YÊU CẦU CHO GEMINI AI ---
 if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_width=True):
-    # Chọn ngẫu nhiên N từ trong kho của user
-    selected_words = random.sample(user_all_words, num_words)
+    if not selected_words:
+        st.warning("⚠️ Bạn chưa chọn từ vựng nào cả! Hãy chọn ít nhất 1 từ ở danh sách phía trên.")
+        st.stop()
+
     words_str = ", ".join([f"'{w}'" for w in selected_words])
-    
-    st.write("📌 **Các từ vựng được chọn cho bài này:**")
+    st.write(f"📌 **{len(selected_words)} từ vựng đã chọn:**")
     st.info(words_str)
-    
-    # Soạn Prompt gửi cho Gemini AI
+
     prompt_text = f"""
     Bạn là một giáo viên tiếng Anh giỏi. Hãy viết một bài tập giúp tôi luyện tập dựa trên danh sách từ/cụm từ sau: [{words_str}].
 
@@ -74,7 +96,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     4. Cuối bài, hãy cung cấp danh sách từ vựng đã dùng kèm nghĩa tiếng Việt ngắn gọn.
     """
 
-    with st.spinner("🤖 Đang quét danh sách Model Gemini và tạo bài viết cho bạn..."):
+    with st.spinner("🤖 Đang kết nối Gemini AI để tạo bài tập cho các từ bạn đã chọn..."):
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{
@@ -82,7 +104,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
             }]
         }
 
-        # BƯỚC A: TỰ ĐỘNG HỎI GOOGLE DANH SÁCH MODEL ĐANG HỖ TRỢ DẠNG GENERATECONTENT
+        # Quét danh sách Model đang hỗ trợ từ Google API
         list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
         working_models = []
         
@@ -93,17 +115,14 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
                 for m in models_info:
                     methods = m.get("supportedGenerationMethods", [])
                     if "generateContent" in methods:
-                        # Lấy tên model ngắn gọn (bỏ chữ "models/")
                         name = m.get("name", "").replace("models/", "")
                         working_models.append(name)
         except Exception:
             pass
 
-        # Nếu không lấy được danh sách động, gán danh sách dự phòng chuẩn
         if not working_models:
             working_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
 
-        # BƯỚC B: GỬI REQUEST ĐẾN MODEL TÌM ĐƯỢC
         success = False
         last_error = ""
 
