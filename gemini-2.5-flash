@@ -77,7 +77,8 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
 
     with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            # Đổi model sang gemini-2.5-flash để chạy tương thích với API mới
+            model = genai.GenerativeModel("gemini-2.5-flash")
             response = model.generate_content(prompt)
             
             st.write("---")
