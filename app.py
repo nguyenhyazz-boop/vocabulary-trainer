@@ -1,84 +1,117 @@
+import base64
 import streamlit as st
-from utils.auth_manager import login_user, register_user
-from utils.data_manager import load_data
+from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Vocabulary Trainer", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="Vocabulary Trainer - Home", page_icon="📖", layout="wide")
 
-# Khởi tạo session state cho user
+# Khởi tạo trạng thái đăng nhập trong Session State
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
     st.session_state.username = ""
 
-st.title("🌱 Vocabulary Trainer")
+# Đọc danh sách tài khoản người dùng
+users_data = load_data("users.json")
 
-# --- KHI CHƯA ĐĂNG NHẬP ---
-if not st.session_state.logged_in:
-    tab1, tab2 = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký"])
+# --- HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP ---
+if st.session_state.logged_in:
+    username = st.session_state.username
+    st.title(f"👋 Chào mừng quay trở lại, {username}!")
 
-    with tab1:
-        st.subheader("Đăng nhập tài khoản")
-        user_input = st.text_input("Tên đăng nhập:", key="login_user").strip().lower()
-        pass_input = st.text_input("Mật khẩu:", type="password", key="login_pass")
+    # Đọc cấu hình thông tin cá nhân của User (bao gồm Avatar)
+    user_config_file = f"user_profile_{username}.json"
+    user_profile = load_data(user_config_file)
+    current_avatar = user_profile.get("avatar", None)
+
+    # Hiển thị thông tin người dùng ở Thanh Menu bên trái (Sidebar)
+    with st.sidebar:
+        if current_avatar:
+            st.image(current_avatar, width=100)
+        else:
+            st.markdown("### 👤 Chưa có Avatar")
+        st.markdown(f"**Tài khoản:** `{username}`")
+        st.divider()
+        if st.button("🚪 Đăng xuất", type="secondary", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.rerun()
+
+    # SECTION: CÀI ĐẶT AVATAR CÁ NHÂN
+    st.write("---")
+    st.subheader("🖼️ Cài đặt Ảnh đại diện (Avatar)")
+    
+    col_avt1, col_avt2 = st.columns([1, 2])
+    
+    with col_avt1:
+        if current_avatar:
+            st.image(current_avatar, width=150, caption=f"Avatar của {username}")
+        else:
+            st.info("Bạn chưa thiết lập ảnh đại diện.")
+
+    with col_avt2:
+        uploaded_file = st.file_uploader(
+            "Tải ảnh từ máy tính của bạn (PNG, JPG, JPEG):", 
+            type=["png", "jpg", "jpeg"],
+            key="avatar_uploader"
+        )
         
+        if uploaded_file is not None:
+            # Mã hóa ảnh sang chuỗi Base64
+            bytes_data = uploaded_file.getvalue()
+            base64_image = f"data:image/png;base64,{base64.b64encode(bytes_data).decode()}"
+            
+            if st.button("💾 Lưu ảnh đại diện này", type="primary", use_container_width=True):
+                user_profile["avatar"] = base64_image
+                save_data(user_profile, user_config_file)
+                st.success("🎉 Đã cập nhật Avatar thành công!")
+                st.rerun()
+
+    st.write("---")
+    st.info("💡 Hãy chọn các tính năng trên thanh menu bên trái (**Library, Study, Quiz, Statistics...**) để bắt đầu học tập nhé!")
+
+# --- HIỂN THỊ KHI CHƯA ĐĂNG NHẬP (GIAO DIỆN LOGIN / REGISTER) ---
+else:
+    st.title("📖 Vocabulary Trainer")
+    st.caption("Ứng dụng quản lý và luyện tập từ vựng tiếng Anh cá nhân hóa.")
+
+    tab_login, tab_register = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký tài khoản"])
+
+    # TAB 1: ĐĂNG NHẬP
+    with tab_login:
+        st.subheader("Đăng nhập")
+        login_user = st.text_input("Tên đăng nhập", key="login_user")
+        login_pass = st.text_input("Mật khẩu", type="password", key="login_pass")
+
         if st.button("Đăng nhập", type="primary", use_container_width=True):
-            if user_input and pass_input:
-                success, msg = login_user(user_input, pass_input)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.username = user_input
-                    st.success(f"Chào mừng {user_input} quay trở lại!")
-                    st.rerun()
-                else:
-                    st.error(f"❌ {msg}")
+            if login_user in users_data and users_data[login_user] == login_pass:
+                st.session_state.logged_in = True
+                st.session_state.username = login_user
+                st.success("Đăng nhập thành công!")
+                st.rerun()
             else:
-                st.warning("Vui lòng điền đầy đủ thông tin!")
+                st.error("❌ Tên đăng nhập hoặc mật khẩu không chính xác!")
 
-    with tab2:
-        st.subheader("Tạo tài khoản mới")
-        reg_user = st.text_input("Tên đăng nhập:", key="reg_user").strip().lower()
-        reg_pass = st.text_input("Mật khẩu:", type="password", key="reg_pass")
-        reg_pass_confirm = st.text_input("Xác nhận mật khẩu:", type="password", key="reg_pass_confirm")
+    # TAB 2: ĐĂNG KÝ
+    with tab_register:
+        st.subheader("Đăng ký tài khoản mới")
+        reg_user = st.text_input("Tên đăng nhập mới", key="reg_user")
+        reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_pass")
+        reg_pass_confirm = st.text_input("Xác nhận mật khẩu", type="password", key="reg_pass_confirm")
 
-        if st.button("Đăng ký", use_container_width=True):
+        if st.button("Đăng ký", type="primary", use_container_width=True):
             if not reg_user or not reg_pass:
-                st.warning("Vui lòng điền đầy đủ thông tin!")
+                st.warning("⚠️ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!")
+            elif reg_user in users_data:
+                st.error("❌ Tên đăng nhập này đã tồn tại. Vui lòng chọn tên khác!")
             elif reg_pass != reg_pass_confirm:
                 st.error("❌ Mật khẩu xác nhận không trùng khớp!")
             else:
-                success, msg = register_user(reg_user, reg_pass)
-                if success:
-                    st.success("🎉 Đăng ký thành công! Hãy chuyển sang tab Đăng nhập.")
-                else:
-                    st.error(f"❌ {msg}")
-
-    st.stop()
-
-# --- KHI ĐÃ ĐĂNG NHẬP THÀNH CÔNG ---
-st.sidebar.markdown(f"👤 Tài khoản: **{st.session_state.username}**")
-if st.sidebar.button("🚪 Đăng xuất"):
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-    st.rerun()
-
-# Đọc thống kê kho từ vựng riêng của User
-colloc_file = f"data_collocation_{st.session_state.username}.json"
-vocab_file = f"data_vocab_{st.session_state.username}.json"
-
-colloc_data = load_data(colloc_file)
-vocab_data = load_data(vocab_file)
-
-total_words = len(colloc_data) + len(vocab_data)
-
-st.markdown(f"### 👋 Xin chào, **{st.session_state.username}**!")
-st.caption("Góc nhỏ luyện tập từ vựng & collocations mỗi ngày.")
-
-st.divider()
-
-col1, col2, col3 = st.columns(3)
-col1.metric("🔗 Collocations", f"{len(colloc_data)} từ")
-col2.metric("🔤 Normal Vocab", f"{len(vocab_data)} từ")
-col3.metric("📖 Tổng từ vựng", f"{total_words} từ")
-
-st.divider()
-st.info("👈 Chọn một chức năng bên thanh menu bên trái để bắt đầu học!")
+                users_data[reg_user] = reg_pass
+                save_data(users_data, "users.json")
+                
+                # Tạo sẵn 2 file dữ liệu trống cho tài khoản mới
+                save_data({}, f"data_collocation_{reg_user}.json")
+                save_data({}, f"data_vocab_{reg_user}.json")
+                save_data({}, f"user_profile_{reg_user}.json")
+                
+                st.success("🎉 Đăng ký tài khoản thành công! Vui lòng chuyển sang Tab 'Đăng nhập'.")
