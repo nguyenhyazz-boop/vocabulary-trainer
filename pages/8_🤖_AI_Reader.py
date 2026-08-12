@@ -44,7 +44,7 @@ st.subheader("🎯 Chọn danh sách từ vựng muốn đưa vào bài")
 selected_words = st.multiselect(
     "Tích chọn các từ/cụm từ bạn muốn luyện tập:",
     options=user_all_words,
-    default=user_all_words[:min(8, len(user_all_words))]  # Mặc định chọn sẵn 8 từ đầu tiên
+    default=user_all_words[:min(8, len(user_all_words))]
 )
 
 # Nút tiện ích hỗ trợ chọn nhanh
@@ -59,7 +59,6 @@ with col_quick2:
         st.session_state.selected_words_override = random.sample(user_all_words, min(10, len(user_all_words)))
         st.rerun()
 
-# Cập nhật danh sách nếu chọn nhanh
 if "selected_words_override" in st.session_state:
     selected_words = st.session_state.selected_words_override
     del st.session_state.selected_words_override
@@ -76,15 +75,13 @@ task_type = st.selectbox(
 
 st.divider()
 
-# --- 4. GỬI YÊU CẦU CHO GEMINI AI ---
+# --- 4. GỬI YÊU CẦU CHO GEMINI AI VÀ GIỮ LẠI KẾT QUẢ ---
 if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_width=True):
     if not selected_words:
         st.warning("⚠️ Bạn chưa chọn từ vựng nào cả! Hãy chọn ít nhất 1 từ ở danh sách phía trên.")
         st.stop()
 
     words_str = ", ".join([f"'{w}'" for w in selected_words])
-    st.write(f"📌 **{len(selected_words)} từ vựng đã chọn:**")
-    st.info(words_str)
 
     prompt_text = f"""
     Bạn là một giáo viên tiếng Anh giỏi. Hãy viết một bài tập giúp tôi luyện tập dựa trên danh sách từ/cụm từ sau: [{words_str}].
@@ -104,7 +101,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
             }]
         }
 
-        # Quét danh sách Model đang hỗ trợ từ Google API
+        # Quét danh sách Model đang hỗ trợ
         list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
         working_models = []
         
@@ -134,10 +131,14 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
 
                 if res.status_code == 200:
                     result_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                    st.write("---")
-                    st.markdown(result_text)
-                    st.balloons()
+                    
+                    # LƯU KẾT QUẢ VÀO SESSION STATE ĐỂ KHÔNG BỊ MẤT KHI CHUYỂN TRANG
+                    st.session_state.ai_saved_reading = {
+                        "text": result_text,
+                        "words": selected_words
+                    }
                     success = True
+                    st.balloons()
                     break
                 else:
                     last_error = res_data.get("error", {}).get("message", res.text)
@@ -147,3 +148,11 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
 
         if not success:
             st.error(f"❌ Có lỗi kết nối AI: {last_error}")
+
+# --- 5. HIỂN THỊ BÀI ĐỌC ĐÃ LƯU (KỂ CẢ KHI CHUYỂN TRANG QUAY LẠI) ---
+if "ai_saved_reading" in st.session_state:
+    saved_data = st.session_state.ai_saved_reading
+    st.write("---")
+    st.write(f"📌 **{len(saved_data['words'])} từ vựng trong bài đọc này:**")
+    st.info(", ".join([f"'{w}'" for w in saved_data['words']]))
+    st.markdown(saved_data["text"])
