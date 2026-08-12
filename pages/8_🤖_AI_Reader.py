@@ -73,8 +73,13 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     """
 
     with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
-        # Gửi request HTTP trực tiếp tới Google Gemini REST API
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
+        # Danh sách các model Gemini hiện đại nhất để thử lần lượt
+        models_to_try = [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash-latest"
+        ]
+
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{
@@ -82,18 +87,28 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
             }]
         }
 
-        try:
-            res = requests.post(url, json=payload, headers=headers, timeout=30)
-            res_data = res.json()
+        success = False
+        last_error = ""
 
-            if res.status_code == 200:
-                result_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                st.write("---")
-                st.markdown(result_text)
-                st.balloons()
-            else:
-                err_info = res_data.get("error", {}).get("message", res.text)
-                st.error(f"❌ Có lỗi từ Google API ({res.status_code}): {err_info}")
+        # Lặp qua từng model cho đến khi gọi thành công
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key.strip()}"
+            try:
+                res = requests.post(url, json=payload, headers=headers, timeout=30)
+                res_data = res.json()
 
-        except Exception as e:
-            st.error(f"❌ Lỗi kết nối: {e}")
+                if res.status_code == 200:
+                    result_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    st.write("---")
+                    st.markdown(result_text)
+                    st.balloons()
+                    success = True
+                    break
+                else:
+                    last_error = res_data.get("error", {}).get("message", res.text)
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        if not success:
+            st.error(f"❌ Có lỗi kết nối AI: {last_error}")
