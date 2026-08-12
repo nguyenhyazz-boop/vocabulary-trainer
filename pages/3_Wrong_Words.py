@@ -1,117 +1,76 @@
 import streamlit as st
-import json
-import random
+from utils.data_manager import load_data, save_data
 
-st.title("❌ Review Wrong Words")
+st.set_page_config(page_title="Wrong Words - Vocabulary Trainer", page_icon="❌", layout="wide")
 
+st.title("❌ Wrong Words List")
+st.caption("Danh sách các từ vựng bạn đã trả lời sai. Hãy ôn tập lại để ghi nhớ tốt hơn!")
 
-# --- 1. HÀM ĐỌC & LƯU DATA.JSON ---
-def load_data():
-    try:
-        with open("data.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-
-def save_data(data):
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-
-data = load_data()
-
-# --- 2. LỌC DANH SÁCH CÁC TỪ BỊ SAI ---
-# Lấy những từ mà số lần 'wrong' > 0
-wrong_words_list = []
-for word, info in data.items():
-    if isinstance(info, dict) and info.get("wrong", 0) > 0:
-        wrong_words_list.append(word)
-
-if not wrong_words_list:
-    st.success("🎉 Tuyệt vời! Bạn không có từ nào trong danh sách bị sai cả.")
+# Kiểm tra đăng nhập
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
-# --- 3. KHỞI TẠO TRẠNG THÁI KHÔNG LẶP TỪ BỊ SAI ---
-if "wrong_studied" not in st.session_state:
-    st.session_state.wrong_studied = []
+username = st.session_state.username
 
-remaining_wrong = [w for w in wrong_words_list if w not in st.session_state.wrong_studied]
+# --- 1. ĐỌC DỮ LIỆU CÁ NHÂN CỦA USER ---
+colloc_file = f"data_collocation_{username}.json"
+vocab_file = f"data_vocab_{username}.json"
 
-# Nếu đã ôn hết danh sách từ sai trong phiên
-if not remaining_wrong:
+colloc_data = load_data(colloc_file)
+vocab_data = load_data(vocab_file)
+
+# Gộp toàn bộ từ vựng cá nhân
+user_all_words = {}
+for w, item in colloc_data.items():
+    if isinstance(item, dict):
+        item["file_type"] = colloc_file
+        user_all_words[w] = item
+
+for w, item in vocab_data.items():
+    if isinstance(item, dict):
+        item["file_type"] = vocab_file
+        user_all_words[w] = item
+
+# --- 2. LỌC CÁC TỪ CÓ ĐIỂM SAI (WRONG > 0) ---
+wrong_list = {
+    w: item for w, item in user_all_words.items()
+    if isinstance(item, dict) and item.get("wrong", 0) > 0
+}
+
+if not wrong_list:
     st.balloons()
-    st.success("🎉 Bạn đã hoàn thành ôn tập lại toàn bộ danh sách từ sai!")
-    if st.button("Ôn lại từ sai lần nữa"):
-        st.session_state.wrong_studied = []
-        st.rerun()
+    st.success("🎉 Tuyệt vời! Hiện tại bạn không có từ nào bị đánh dấu sai cả.")
     st.stop()
 
-# Chọn từ sai ngẫu nhiên an toàn
-if "current_wrong_word" not in st.session_state or st.session_state.current_wrong_word not in remaining_wrong:
-    st.session_state.current_wrong_word = random.choice(remaining_wrong)
-
-current_word = st.session_state.current_wrong_word
-
-# --- 4. PROGRESS BAR THỐNG KÊ (ĐÃ FIX AN TOÀN TRÁNH LỖI ĐỎ) ---
-total_wrong_count = len(wrong_words_list)
-studied_count = len(st.session_state.wrong_studied)
-
-# Ép giá trị tiến trình luôn nằm chuẩn trong khoảng [0.0, 1.0] để không bao giờ bị sập web
-progress = float(studied_count) / float(total_wrong_count) if total_wrong_count > 0 else 0.0
-progress = max(0.0, min(1.0, progress))
-
-st.progress(progress)
-st.write(f"Đã ôn tập: **{studied_count} / {total_wrong_count}** từ sai")
-
-# --- 5. HIỂN THỊ TỪ VỰNG & SHOW MEANING ---
+st.write(f"📌 Bạn có **{len(wrong_list)}** từ cần ôn tập lại:")
 st.divider()
-st.subheader(f"Word: {current_word}")
 
-# Hiển thị số lần sai thực tế của từ này
-word_data = data.get(current_word, {})
-wrong_count = word_data.get("wrong", 0) if isinstance(word_data, dict) else 0
-correct_count = word_data.get("correct", 0) if isinstance(word_data, dict) else 0
-st.caption(f"📊 Thống kê từ này: **{correct_count}** đúng / **{wrong_count}** sai")
-
-# Show Meaning (tự đóng khi chuyển từ nhờ key động)
-with st.expander("👀 Show Meaning", expanded=False, key=f"expander_wrong_{current_word}"):
-    word_info = data.get(current_word, "")
-    if isinstance(word_info, dict):
-        meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
-    else:
-        meaning = str(word_info)
-    st.write(meaning)
-
-# --- 6. NÚT XỬ LÝ CORRECT / WRONG ---
-st.write("---")
-col1, col2 = st.columns(2)
-
-
-def handle_wrong_answer(is_correct):
-    if current_word not in st.session_state.wrong_studied:
-        st.session_state.wrong_studied.append(current_word)
-
-    if isinstance(data.get(current_word), dict):
-        if is_correct:
-            data[current_word]["correct"] = data[current_word].get("correct", 0) + 1
-            # Nếu trả lời đúng, trừ bớt 1 lần sai để khuyến khích
-            if data[current_word].get("wrong", 0) > 0:
-                data[current_word]["wrong"] -= 1
-        else:
-            data[current_word]["wrong"] = data[current_word].get("wrong", 0) + 1
-
-    save_data(data)
-    # Xóa từ hiện tại để ép random từ tiếp theo ở lần load sau
-    if "current_wrong_word" in st.session_state:
-        del st.session_state.current_wrong_word
-
-
-with col1:
-    if st.button("✅ Correct", use_container_width=True):
-        handle_wrong_answer(True)
-        st.rerun()
-
+# --- 3. HIỂN THỊ DANH SÁCH TỪ SAI VÀ NÚT ĐÁNH DẤU ĐÃ THUỘC ---
+for word, item in wrong_list.items():
+    meaning = item.get("meaning", "")
+    pos_tag = item.get("pos", "")
+    wrong_cnt = item.get("wrong", 0)
+    correct_cnt = item.get("correct", 0)
+    target_file = item.get("file_type")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        pos_display = f" (*{pos_tag}*)" if pos_tag else ""
+        st.markdown(f"🔴 **{word}**{pos_display} — **{meaning}**")
+        st.caption(f"📊 Kết quả: Sai **{wrong_cnt}** lần | Đúng **{correct_cnt}** lần")
+        
+    with col2:
+        # Nút xóa khỏi danh sách sai (Reset số lần sai về 0)
+        if st.button("✅ Đã thuộc từ này", key=f"fixed_{word}", use_container_width=True):
+            file_data = load_data(target_file)
+            if word in file_data and isinstance(file_data[word], dict):
+                file_data[word]["wrong"] = 0
+                save_data(file_data, target_file)
+                st.success(f"Đã gạch tên **{word}** khỏi danh sách sai!")
+                st.rerun()
+    st.write("---")
 with col2:
     if st.button("❌ Wrong", use_container_width=True):
         handle_wrong_answer(False)
