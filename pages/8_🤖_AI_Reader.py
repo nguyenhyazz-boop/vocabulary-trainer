@@ -1,6 +1,6 @@
 import random
+import requests
 import streamlit as st
-import google.generativeai as genai
 from utils.data_manager import load_data
 
 st.set_page_config(page_title="AI Reading Assistant - Vocabulary Trainer", page_icon="🤖", layout="wide")
@@ -22,9 +22,6 @@ api_key = st.text_input("Nhập Gemini API Key của bạn (chỉ cần nhập 1
 if not api_key:
     st.info("💡 Bạn chưa có API Key? Hãy lấy miễn phí tại: https://aistudio.google.com/")
     st.stop()
-
-# Cấu hình Gemini AI
-genai.configure(api_key=api_key)
 
 # --- 2. ĐỌC TỪ VỰNG CÁ NHÂN ---
 colloc_data = load_data(f"data_collocation_{username}.json")
@@ -65,7 +62,7 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     st.info(words_str)
     
     # Soạn Prompt gửi cho Gemini AI
-    prompt = f"""
+    prompt_text = f"""
     Bạn là một giáo viên tiếng Anh giỏi. Hãy viết một bài tập giúp tôi luyện tập dựa trên danh sách từ/cụm từ sau: [{words_str}].
 
     Yêu cầu:
@@ -76,24 +73,27 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     """
 
     with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
-        # Tự động thử lần lượt các model Gemini khả thi để tránh lỗi 404
-        available_models = ["gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-pro"]
-        response_text = None
-        error_msg = ""
+        # Gửi request HTTP trực tiếp tới Google Gemini REST API
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt_text}]
+            }]
+        }
 
-        for model_name in available_models:
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                response_text = response.text
-                break
-            except Exception as e:
-                error_msg = str(e)
-                continue
+        try:
+            res = requests.post(url, json=payload, headers=headers, timeout=30)
+            res_data = res.json()
 
-        if response_text:
-            st.write("---")
-            st.markdown(response_text)
-            st.balloons()
-        else:
-            st.error(f"❌ Không thể kết nối AI: {error_msg}")
+            if res.status_code == 200:
+                result_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                st.write("---")
+                st.markdown(result_text)
+                st.balloons()
+            else:
+                err_info = res_data.get("error", {}).get("message", res.text)
+                st.error(f"❌ Có lỗi từ Google API ({res.status_code}): {err_info}")
+
+        except Exception as e:
+            st.error(f"❌ Lỗi kết nối: {e}")
