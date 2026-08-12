@@ -23,6 +23,8 @@ if not api_key:
     st.info("💡 Bạn chưa có API Key? Hãy lấy miễn phí tại: https://aistudio.google.com/")
     st.stop()
 
+clean_api_key = api_key.strip()
+
 # --- 2. ĐỌC TỪ VỰNG CÁ NHÂN ---
 colloc_data = load_data(f"data_collocation_{username}.json")
 vocab_data = load_data(f"data_vocab_{username}.json")
@@ -73,11 +75,12 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
     """
 
     with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
-        # Danh sách tên model chuẩn xác theo tài liệu Google API v1beta
+        # Thử danh sách các model chuẩn nhất của Gemini
         models_to_try = [
             "gemini-1.5-flash",
+            "gemini-2.5-flash",
             "gemini-1.5-pro",
-            "gemini-2.0-flash-exp"
+            "gemini-pro"
         ]
 
         headers = {"Content-Type": "application/json"}
@@ -90,9 +93,9 @@ if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_widt
         success = False
         last_error = ""
 
-        # Lặp qua từng model cho đến khi thành công
+        # Lặp qua từng tên model để gọi API
         for model_name in models_to_try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key.strip()}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_api_key}"
             try:
                 res = requests.post(url, json=payload, headers=headers, timeout=30)
                 res_data = res.json()
