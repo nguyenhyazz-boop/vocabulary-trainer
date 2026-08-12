@@ -32,7 +32,7 @@ st.markdown("""
 
 st.title("📖 Study Vocabulary")
 
-# Kiểm tra trạng thái đăng nhập
+# Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
@@ -132,7 +132,7 @@ with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_wo
         meaning = str(word_info)
         st.markdown(f"### 👉 **{meaning}**")
 
-# --- 5. LƯU KẾT QUẢ VÀ NÚT BẤM (GÁN KEY ĐỘNG TRÁNH LỖI TRÙNG ID) ---
+# --- 5. NÚT ĐÁNH GIÁ (CHỈ DÙNG 2 CỘT CHO CORRECT & WRONG) ---
 st.write("---")
 col1, col2 = st.columns(2)
 
@@ -159,9 +159,5 @@ with col1:
 
 with col2:
     if st.button("❌ Wrong", use_container_width=True, key=f"btn_wrong_{current_word}"):
-        handle_answer(False)
-        st.rerun()
-with col2:
-    if st.button("❌ Wrong", use_container_width=True):
         handle_answer(False)
         st.rerun()
