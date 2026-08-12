@@ -18,15 +18,18 @@ vocab_file = f"data_vocab_{username}.json"
 colloc_data = load_data(colloc_file)
 vocab_data = load_data(vocab_file)
 
-# 1. PHÂN BỔ KHO TỪ VỰNG
+# 1. PHÂN BỔ KHO TỪ VỰNG (GIAO DIỆN SẠCH SẼ - KHÔNG HIỆN TÊN FILE)
 st.subheader("📁 Phân bổ theo kho từ vựng")
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.info(f"🔗 **Collocations** (`{colloc_file}`): **{len(colloc_data)}** từ")
+    st.metric(label="🔗 Collocations & Phrases", value=f"{len(colloc_data)} từ")
 
 with col2:
-    st.success(f"🔤 **Normal Vocabulary** (`{vocab_file}`): **{len(vocab_data)}** từ")
+    st.metric(label="🔤 Normal Vocabulary", value=f"{len(vocab_data)} từ")
+
+with col3:
+    st.metric(label="📚 Tổng từ vựng cá nhân", value=f"{len(colloc_data) + len(vocab_data)} từ")
 
 st.divider()
 
@@ -58,7 +61,7 @@ else:
 
 st.divider()
 
-# 3. BIỂU ĐỒ HOẠT ĐỘNG
+# 3. BIỂU ĐỒ TIẾN ĐỘ
 st.subheader("📈 Tiến độ học tập")
 
 chart_data = []
