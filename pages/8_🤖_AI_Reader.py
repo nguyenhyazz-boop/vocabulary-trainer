@@ -7,7 +7,7 @@ from utils.data_manager import load_data, save_data
 st.set_page_config(page_title="AI Reading Assistant - Vocabulary Trainer", page_icon="🤖", layout="wide")
 
 st.title("🤖 AI Reading Assistant")
-st.caption("Tạo bài đọc hiểu / luyện tập từ vựng cá nhân & lưu lịch sử tự động!")
+st.caption("Tạo bài đọc hiểu / luyện tập từ vựng cá nhân bằng AI tự động!")
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -17,26 +17,22 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 username = st.session_state.username
 history_file = f"ai_history_{username}.json"
 
+# Lấy API Key tự động từ Streamlit Secrets
+clean_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
+
+if not clean_api_key:
+    st.error("⚠️ Hệ thống chưa được cấu hình API Key. Vui lòng thêm GEMINI_API_KEY vào Streamlit Secrets!")
+    st.stop()
+
 # Đọc lịch sử bài học AI đã lưu của User
 ai_history = load_data(history_file)
 if not isinstance(ai_history, list):
     ai_history = []
 
-# ĐỌC KHO TỪ VỰNG CÁ NHÂN
+# Đọc kho từ vựng cá nhân
 colloc_data = load_data(f"data_collocation_{username}.json")
 vocab_data = load_data(f"data_vocab_{username}.json")
 user_all_words = list({**colloc_data, **vocab_data}.keys())
-
-# CẤU HÌNH API KEY CHUNG CHO CẢ TRANG
-st.write("📌 **Cấu hình Gemini AI:**")
-api_key = st.text_input("Nhập Gemini API Key của bạn (chỉ cần nhập 1 lần):", type="password", key="gemini_api_key")
-
-if not api_key:
-    st.info("💡 Bạn chưa có API Key? Hãy lấy miễn phí tại: https://aistudio.google.com/")
-
-clean_api_key = api_key.strip() if api_key else ""
-
-st.divider()
 
 # Tạo 2 Tab
 tab_create, tab_history = st.tabs(["🚀 Tạo bài đọc mới", "📜 Lịch sử tạo bài AI"])
@@ -45,9 +41,7 @@ tab_create, tab_history = st.tabs(["🚀 Tạo bài đọc mới", "📜 Lịch 
 # TAB 1: TẠO BÀI ĐỌC MỚI
 # =========================================================
 with tab_create:
-    if not clean_api_key:
-        st.warning("⚠️ Vui lòng nhập Gemini API Key ở ô phía trên trước khi tạo bài tập mới!")
-    elif not user_all_words:
+    if not user_all_words:
         st.warning("⚠️ Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục **Library** để thêm từ trước nhé!")
     else:
         st.subheader("🎯 Chọn danh sách từ vựng muốn đưa vào bài")
@@ -166,7 +160,6 @@ with tab_create:
             st.caption(f"🕒 Thời gian: {latest_item['time']} | 🎯 Dạng bài: {latest_item['task_type']}")
             st.info(f"📌 Từ vựng: {', '.join(latest_item['words'])}")
             st.markdown(latest_item["content"])
-
 
 # =========================================================
 # TAB 2: LỊCH SỬ TẠO BÀI AI
