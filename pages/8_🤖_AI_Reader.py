@@ -7,7 +7,7 @@ from utils.data_manager import load_data, save_data
 st.set_page_config(page_title="AI Reading Assistant - Vocabulary Trainer", page_icon="🤖", layout="wide")
 
 st.title("🤖 AI Reading Assistant")
-st.caption("Tạo bài đọc hiểu / luyện tập từ vựng cá nhân bằng AI tự động!")
+st.caption("Tạo bài đọc hiểu / luyện tập từ vựng cá nhân phân theo cấp độ phù hợp!")
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -44,7 +44,7 @@ with tab_create:
     if not user_all_words:
         st.warning("⚠️ Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục **Library** để thêm từ trước nhé!")
     else:
-        st.subheader("🎯 Chọn danh sách từ vựng muốn đưa vào bài")
+        st.subheader("🎯 Thiết lập bài tập AI")
 
         selected_words = st.multiselect(
             "Tích chọn các từ/cụm từ bạn muốn luyện tập:",
@@ -68,14 +68,29 @@ with tab_create:
             del st.session_state.selected_words_override
 
         st.write("")
-        task_type = st.selectbox(
-            "Chọn dạng bài tập bạn muốn luyện:",
-            [
-                "📝 Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
-                "📖 Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
-                "💬 Đoạn hội thoại thực tế giữa 2 người"
-            ]
-        )
+        
+        # CHỌN DẠNG BÀI VÀ CẤP ĐỘ
+        col_type, col_level = st.columns([2, 1])
+        
+        with col_type:
+            task_type = st.selectbox(
+                "Chọn dạng bài tập bạn muốn luyện:",
+                [
+                    "📝 Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
+                    "📖 Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
+                    "💬 Đoạn hội thoại thực tế giữa 2 người"
+                ]
+            )
+
+        with col_level:
+            difficulty = st.selectbox(
+                "Chọn cấp độ bài viết:",
+                [
+                    "🌱 Easy (Đơn giản, câu ngắn)",
+                    "⚡ Normal (Trung bình, vừa sức)",
+                    "🔥 Hard (Nâng cao, học thuật)"
+                ]
+            )
 
         st.divider()
 
@@ -85,21 +100,30 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # Prompt chuẩn hóa ép AI chỉ trả về nội dung bài đọc
+                # Hướng dẫn độ khó tương ứng cho AI
+                level_instructions = {
+                    "🌱 Easy (Đơn giản, câu ngắn)": "Dùng từ vựng đơn giản, câu ngắn gọn, cấu trúc ngữ pháp cơ bản dễ hiểu, phù hợp người mới học.",
+                    "⚡ Normal (Trung bình, vừa sức)": "Dùng ngữ pháp và từ vựng thông dụng hàng ngày, độ dài vừa phải, văn phong tự nhiên.",
+                    "🔥 Hard (Nâng cao, học thuật)": "Dùng cấu trúc câu phức hợp, văn phong học thuật/chuyên nghiệp, câu dài chứa nhiều thông tin chi tiết."
+                }
+
                 prompt_text = f"""
 Hãy đóng vai một giáo viên Tiếng Anh xuất sắc. 
 
-Nhiệm vụ của bạn: Viết một bài tập luyện tập Tiếng Anh dựa trên danh sách từ/cụm từ sau: [{words_str}].
+Nhiệm vụ: Viết một bài tập Tiếng Anh dựa trên danh sách từ/cụm từ sau: [{words_str}].
+
+CẤP ĐỘ BÀI VIẾT: {difficulty}
+Yêu cầu độ khó: {level_instructions[difficulty]}
 
 YÊU CẦU BẮT BUỘC:
 1. Dạng bài yêu cầu: {task_type}.
 2. Trong phần văn bản tiếng Anh, hãy **in đậm** (bold) chính xác các từ/cụm từ trong danh sách trên mỗi khi chúng xuất hiện.
-3. Nội dung bài viết phải tự nhiên, chuẩn ngữ pháp và mạch lạc.
-4. Ở cuối bài, cung cấp một bảng hoặc danh sách tổng hợp lại các từ vựng đã dùng kèm giải nghĩa tiếng Việt ngắn gọn.
-5. KHÔNG lặp lại các câu hướng dẫn, KHÔNG in ra prompt, KHÔNG giải thích quy trình. Hãy bắt đầu ngay vào tiêu đề và nội dung bài tập.
+3. Nội dung bài viết phải mạch lạc, chuẩn ngữ pháp và tuân thủ đúng CẤP ĐỘ đã chọn.
+4. Ở cuối bài, cung cấp một danh sách tổng hợp lại các từ vựng đã dùng kèm giải nghĩa tiếng Việt ngắn gọn.
+5. KHÔNG lặp lại các câu hướng dẫn, KHÔNG in ra prompt. Bắt đầu ngay vào tiêu đề và nội dung bài tập.
 """
 
-                with st.spinner("🤖 AI đang tạo bài đọc đẹp mắt cho bạn..."):
+                with st.spinner(f"🤖 AI đang tạo bài đọc cấp độ {difficulty} cho bạn..."):
                     headers = {"Content-Type": "application/json"}
                     payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
@@ -136,6 +160,7 @@ YÊU CẦU BẮT BUỘC:
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
+                                    "difficulty": difficulty,
                                     "words": selected_words,
                                     "content": result_text
                                 }
@@ -145,7 +170,7 @@ YÊU CẦU BẮT BUỘC:
                                 
                                 success = True
                                 st.balloons()
-                                st.success("🎉 Đã tạo bài tập thành công!")
+                                st.success(f"🎉 Đã tạo bài tập ({difficulty}) thành công!")
                                 st.rerun()
                                 break
                             else:
@@ -162,7 +187,7 @@ YÊU CẦU BẮT BUỘC:
             latest_item = ai_history[0]
             st.write("---")
             st.subheader("📄 Bài tập vừa tạo gần nhất:")
-            st.caption(f"🕒 Thời gian: {latest_item['time']} | 🎯 Dạng bài: {latest_item['task_type']}")
+            st.caption(f"🕒 {latest_item['time']} | 🎯 {latest_item['task_type']} | 💪 Cấp độ: **{latest_item.get('difficulty', 'Sơ cấp')}**")
             st.info(f"📌 Từ vựng: {', '.join(latest_item['words'])}")
             st.markdown(latest_item["content"])
 
@@ -218,8 +243,9 @@ with tab_history:
         st.write("---")
 
         for idx, item in enumerate(ai_history):
-            with st.expander(f"📌 Bài #{len(ai_history) - idx} - {item['time']} ({len(item['words'])} từ)"):
-                st.caption(f"**Dạng bài:** {item['task_type']}")
+            diff_tag = item.get('difficulty', 'Vừa sức')
+            with st.expander(f"📌 Bài #{len(ai_history) - idx} - {item['time']} [{diff_tag}] ({len(item['words'])} từ)"):
+                st.caption(f"**Dạng bài:** {item['task_type']} | **Cấp độ:** {diff_tag}")
                 st.write(f"**Các từ vựng sử dụng:** `{', '.join(item['words'])}`")
                 st.divider()
                 st.markdown(item["content"])
