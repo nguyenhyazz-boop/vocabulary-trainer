@@ -153,6 +153,7 @@ with tab_create:
                     if not success:
                         st.error(f"❌ Có lỗi kết nối AI: {last_error}")
 
+        # Hiển thị bài đọc vừa tạo gần nhất
         if ai_history:
             latest_item = ai_history[0]
             st.write("---")
@@ -160,6 +161,41 @@ with tab_create:
             st.caption(f"🕒 Thời gian: {latest_item['time']} | 🎯 Dạng bài: {latest_item['task_type']}")
             st.info(f"📌 Từ vựng: {', '.join(latest_item['words'])}")
             st.markdown(latest_item["content"])
+
+            # --- KHU VỰC THÊM TỪ MỚI NHANH TỪ BÀI ĐỌC ---
+            st.divider()
+            with st.expander("➕ Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng ngay tại đây!", expanded=True):
+                col_w1, col_w2, col_w3 = st.columns([2, 2, 1])
+                with col_w1:
+                    new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="vd: permanent")
+                with col_w2:
+                    new_m = st.text_input("Nghĩa của từ:", key="add_quick_meaning", placeholder="vd: lặp lại, vĩnh viễn")
+                with col_w3:
+                    target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
+
+                if st.button("📌 Lưu ngay vào Kho từ vựng", type="primary", use_container_width=True):
+                    if not new_w or not new_m:
+                        st.warning("⚠️ Vui lòng nhập đầy đủ Từ và Nghĩa!")
+                    else:
+                        clean_word = new_w.strip()
+                        clean_meaning = new_m.strip()
+                        
+                        if target_repo == "Collocations":
+                            target_file = f"data_collocation_{username}.json"
+                            repo_data = colloc_data
+                        else:
+                            target_file = f"data_vocab_{username}.json"
+                            repo_data = vocab_data
+
+                        repo_data[clean_word] = {
+                            "meaning": clean_meaning,
+                            "correct": 0,
+                            "wrong": 0
+                        }
+                        save_data(repo_data, target_file)
+                        st.success(f"🎉 Đã thêm từ **'{clean_word}'** vào kho **{target_repo}** thành công!")
+                        st.rerun()
+
 
 # =========================================================
 # TAB 2: LỊCH SỬ TẠO BÀI AI
@@ -180,6 +216,9 @@ with tab_history:
         for idx, item in enumerate(ai_history):
             with st.expander(f"📌 Bài #{len(ai_history) - idx} - {item['time']} ({len(item['words'])} từ)"):
                 st.caption(f"**Dạng bài:** {item['task_type']}")
+                st.write(f"**Các từ vựng sử dụng:** `{', '.join(item['words'])}`")
+                st.divider()
+                st.markdown(item["content"])
                 st.write(f"**Các từ vựng sử dụng:** `{', '.join(item['words'])}`")
                 st.divider()
                 st.markdown(item["content"])
