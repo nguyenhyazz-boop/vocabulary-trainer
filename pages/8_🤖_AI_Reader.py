@@ -85,17 +85,21 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
+                # Prompt chuẩn hóa ép AI chỉ trả về nội dung bài đọc
                 prompt_text = f"""
-                Bạn là một giáo viên tiếng Anh giỏi. Hãy viết một bài tập giúp tôi luyện tập dựa trên danh sách từ/cụm từ sau: [{words_str}].
+Hãy đóng vai một giáo viên Tiếng Anh xuất sắc. 
 
-                Yêu cầu:
-                1. Yêu cầu tạo dạng bài: {task_type}.
-                2. Trong đoạn văn tiếng Anh, hãy BÔI ĐEN (**bold**) đúng các từ trong danh sách trên mỗi khi chúng xuất hiện.
-                3. Đảm bảo ngữ cảnh tự nhiên, mạch lạc và chuẩn ngữ pháp.
-                4. Cuối bài, hãy cung cấp danh sách từ vựng đã dùng kèm nghĩa tiếng Việt ngắn gọn.
-                """
+Nhiệm vụ của bạn: Viết một bài tập luyện tập Tiếng Anh dựa trên danh sách từ/cụm từ sau: [{words_str}].
 
-                with st.spinner("🤖 AI đang suy nghĩ và tạo bài viết cho bạn..."):
+YÊU CẦU BẮT BUỘC:
+1. Dạng bài yêu cầu: {task_type}.
+2. Trong phần văn bản tiếng Anh, hãy **in đậm** (bold) chính xác các từ/cụm từ trong danh sách trên mỗi khi chúng xuất hiện.
+3. Nội dung bài viết phải tự nhiên, chuẩn ngữ pháp và mạch lạc.
+4. Ở cuối bài, cung cấp một bảng hoặc danh sách tổng hợp lại các từ vựng đã dùng kèm giải nghĩa tiếng Việt ngắn gọn.
+5. KHÔNG lặp lại các câu hướng dẫn, KHÔNG in ra prompt, KHÔNG giải thích quy trình. Hãy bắt đầu ngay vào tiêu đề và nội dung bài tập.
+"""
+
+                with st.spinner("🤖 AI đang tạo bài đọc đẹp mắt cho bạn..."):
                     headers = {"Content-Type": "application/json"}
                     payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
@@ -141,7 +145,7 @@ with tab_create:
                                 
                                 success = True
                                 st.balloons()
-                                st.success("🎉 Đã tạo bài tập thành công và lưu vào Lịch sử!")
+                                st.success("🎉 Đã tạo bài tập thành công!")
                                 st.rerun()
                                 break
                             else:
@@ -216,9 +220,6 @@ with tab_history:
         for idx, item in enumerate(ai_history):
             with st.expander(f"📌 Bài #{len(ai_history) - idx} - {item['time']} ({len(item['words'])} từ)"):
                 st.caption(f"**Dạng bài:** {item['task_type']}")
-                st.write(f"**Các từ vựng sử dụng:** `{', '.join(item['words'])}`")
-                st.divider()
-                st.markdown(item["content"])
                 st.write(f"**Các từ vựng sử dụng:** `{', '.join(item['words'])}`")
                 st.divider()
                 st.markdown(item["content"])
