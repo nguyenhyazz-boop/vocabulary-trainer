@@ -6,7 +6,7 @@ from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="AI Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
 
-# --- CUSTOM CSS: ICON SVG & MODERN SAAS STYLING ---
+# --- CUSTOM CSS ---
 st.markdown("""
 <style>
     .main .block-container {
@@ -15,7 +15,6 @@ st.markdown("""
         max-width: 1050px;
     }
     
-    /* Header */
     .app-title {
         font-size: 2rem !important;
         font-weight: 700 !important;
@@ -31,7 +30,6 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* SVG Icon Inline Base */
     .svg-icon {
         display: inline-block;
         width: 18px;
@@ -40,7 +38,6 @@ st.markdown("""
         fill: currentColor;
     }
 
-    /* Badges Cấp độ */
     .level-badge {
         display: inline-block;
         padding: 3px 8px;
@@ -53,7 +50,6 @@ st.markdown("""
     .badge-normal { background-color: #E0F2FE; color: #0369A1; }
     .badge-hard { background-color: #FEE2E2; color: #B91C1C; }
 
-    /* Tag từ vựng tối giản */
     .word-chip {
         display: inline-block;
         background-color: #F1F5F9;
@@ -69,10 +65,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SVG ICONS DEFINITION ---
 ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 0 0 0-3z"/></svg>'
 
-# --- HEADER ---
 st.markdown(f"""
 <div>
     <div class="app-title">{ICON_ROBOT} AI Reading Assistant</div>
@@ -80,26 +74,21 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
 history_file = f"ai_history_{username}.json"
-
-# Lấy API Key tự động từ Streamlit Secrets
 clean_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 if not clean_api_key:
     st.error("Hệ thống chưa được cấu hình API Key. Vui lòng thêm GEMINI_API_KEY vào Streamlit Secrets!")
     st.stop()
 
-# Đọc lịch sử bài học AI
 ai_history = load_data(history_file)
 if not isinstance(ai_history, list): ai_history = []
 
-# Đọc kho từ vựng cá nhân
 colloc_data = load_data(f"data_collocation_{username}.json")
 vocab_data = load_data(f"data_vocab_{username}.json")
 if not isinstance(colloc_data, dict): colloc_data = {}
@@ -107,34 +96,30 @@ if not isinstance(vocab_data, dict): vocab_data = {}
 
 user_all_words = list({**colloc_data, **vocab_data}.keys())
 
-# Tạo 2 Tab
 tab_create, tab_history = st.tabs(["Tạo bài đọc mới", "Lịch sử tạo bài AI"])
 
-# =========================================================
-# TAB 1: TẠO BÀI ĐỌC MỚI
-# =========================================================
 with tab_create:
     if not user_all_words:
         st.info("Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục Add Word hoặc Library để thêm từ trước nhé!")
     else:
-        st.subheader("1. Chọn danh sách từ vựng")
+        st.subheader("1. Chọn từ vựng (Khuyên dùng 3-5 từ)")
 
         if "reader_selected_words" not in st.session_state:
-            st.session_state.reader_selected_words = user_all_words[:min(5, len(user_all_words))]
+            st.session_state.reader_selected_words = user_all_words[:min(4, len(user_all_words))]
 
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
-            if st.button("Tự động chọn 5 từ ngẫu nhiên", use_container_width=True):
-                st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
+            if st.button("🎲 AI chọn ngẫu nhiên 3 từ", use_container_width=True):
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(3, len(user_all_words)))
                 st.rerun()
 
         with col_quick2:
-            if st.button("Tự động chọn 10 từ ngẫu nhiên", use_container_width=True):
-                st.session_state.reader_selected_words = random.sample(user_all_words, min(10, len(user_all_words)))
+            if st.button("🎲 AI chọn ngẫu nhiên 5 từ", use_container_width=True):
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
                 st.rerun()
 
         selected_words = st.multiselect(
-            "Tích chọn các từ/cụm từ bạn muốn đưa vào bài tập:",
+            "Tích chọn các từ muốn luyện tập:",
             options=user_all_words,
             key="reader_selected_words"
         )
@@ -148,8 +133,8 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "Đoạn văn ngắn gọn (1-3 câu)",
-                    "Đoạn hội thoại siêu ngắn (2 lượt nói)"
+                    "Đoạn văn ngắn gọn (1-2 câu)",
+                    "Hội thoại siêu ngắn (2 lượt nói)"
                 ]
             )
 
@@ -157,9 +142,9 @@ with tab_create:
             difficulty = st.selectbox(
                 "Cấp độ bài viết",
                 [
-                    "Easy (Câu ngắn, dễ hiểu)",
-                    "Normal (Vừa sức, tự nhiên)",
-                    "Hard (Nâng cao, học thuật)"
+                    "Easy (Đơn giản)",
+                    "Normal (Vừa sức)",
+                    "Hard (Nâng cao)"
                 ]
             )
 
@@ -171,29 +156,24 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                level_instructions = {
-                    "Easy (Câu ngắn, dễ hiểu)": "Use very short and simple sentences.",
-                    "Normal (Vừa sức, tự nhiên)": "Use natural, clear English.",
-                    "Hard (Nâng cao, học thuật)": "Use professional, complex structures."
+                # DÙNG VÍ DỤ MẪU (FEW-SHOT PROMPTING) ĐỂ BẮT AI CHỈ IN RA DUY NHẤT ĐOẠN VĂN
+                prompt_text = f"""Task: Combine the given words into a 1-2 sentence paragraph. Level: {difficulty}.
+
+Example Input: ['contractor', 'blueprint', 'demolition']
+Example Output: The **contractor** checked the **blueprint** before starting the **demolition**.
+
+Input Words: [{words_str}]
+Output:"""
+
+                payload = {
+                    "contents": [{"parts": [{"text": prompt_text}]}],
+                    "generationConfig": {
+                        "temperature": 0.1 # Rút nhiệt độ xuống 0.1 để AI làm đúng mẫu 100%, không sáng tạo lung tung
+                    }
                 }
 
-                # PROMPT TỐI GIẢN TỐI ĐA - BẮT AI TRẢ VỀ DUY NHẤT ĐOẠN VĂN
-                prompt_text = f"""
-Write an extremely concise English text using these words: [{words_str}].
-
-Task format: {task_type}.
-Level: {difficulty} ({level_instructions[difficulty]}).
-
-STRICT RULES:
-1. Maximum length: 1 to 3 sentences ONLY.
-2. Bold all target words: **word**.
-3. Do NOT include titles, greetings, notes, explanations, or word lists at the end.
-4. Output ONLY the raw paragraph text.
-"""
-
-                with st.spinner("AI đang tạo bài tập siêu ngắn gọn..."):
+                with st.spinner("AI đang tạo bài tập..."):
                     headers = {"Content-Type": "application/json"}
-                    payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
                     working_models = []
@@ -223,14 +203,18 @@ STRICT RULES:
                             res_data = res.json()
 
                             if res.status_code == 200:
-                                result_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                                raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
+                                # Hậu xử lý dữ liệu: Nếu AI vẫn cố tình nhả "Output:", cắt bỏ nó luôn!
+                                if "Output:" in raw_text:
+                                    raw_text = raw_text.split("Output:")[-1].strip()
+
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
                                     "difficulty": difficulty,
                                     "words": selected_words,
-                                    "content": result_text
+                                    "content": raw_text
                                 }
                                 
                                 ai_history.insert(0, new_entry)
@@ -249,7 +233,6 @@ STRICT RULES:
                     if not success:
                         st.error(f"Có lỗi kết nối AI: {last_error}")
 
-        # Hiển thị bài đọc vừa tạo gần nhất
         if ai_history:
             latest_item = ai_history[0]
             st.write("")
@@ -269,7 +252,6 @@ STRICT RULES:
             with st.container(border=True):
                 st.markdown(latest_item["content"])
 
-            # Khung Thêm từ nhanh
             with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
                 col_w1, col_w2, col_w3 = st.columns([2, 2, 1])
                 with col_w1:
@@ -302,9 +284,6 @@ STRICT RULES:
                         st.success(f"Đã thêm từ '{clean_word}' vào kho {target_repo} thành công!")
                         st.rerun()
 
-# =========================================================
-# TAB 2: LỊCH SỬ TẠO BÀI AI
-# =========================================================
 with tab_history:
     st.subheader("Danh sách bài đọc AI đã lưu")
     
