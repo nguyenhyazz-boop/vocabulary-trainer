@@ -1,7 +1,6 @@
 import random
 import requests
 import datetime
-import json
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
@@ -157,31 +156,34 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # DÙNG JSON ĐỂ TRÓI HOÀN TOÀN AI, BẮT BUỘC CHỈ NHẢ ĐÚNG FORMAT NÀY
+                # Dùng System Instruction để "tẩy não" AI
+                system_instruction = """You are an automated exercise generator. You NEVER use conversational text, greetings, reasoning, or thinking traces. You output ONLY the exact requested markdown format: 
+1. The paragraph.
+2. A divider (---).
+3. The bulleted dictionary. 
+Nothing before, nothing after."""
+
                 prompt_text = f"""Create an English reading practice using these words: [{words_str}]. Level: {difficulty}.
 
-You MUST return ONLY a valid JSON object. DO NOT output any other text, reasoning, or markdown formatting outside the JSON.
+FORMAT:
+[Paragraph: 3 to 4 sentences. Bold target words like **this**]
 
-Use exactly this JSON structure:
-{{
-    "paragraph": "Write 3 to 4 English sentences here. Bold the target words like **this**.",
-    "vocabulary": [
-        {{"word": "word 1", "meaning": "short Vietnamese meaning"}},
-        {{"word": "word 2", "meaning": "short Vietnamese meaning"}}
-    ]
-}}
+---
+### 📚 Mini Dictionary
+* **word**: short Vietnamese meaning
 """
 
-                # Thêm responseMimeType: application/json để ép phần lõi của AI thành dạng máy tính
                 payload = {
+                    "systemInstruction": {
+                        "parts": [{"text": system_instruction}]
+                    },
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.2,
-                        "responseMimeType": "application/json"
+                        "temperature": 0.2
                     }
                 }
 
-                with st.spinner("AI đang tạo bài tập chuẩn định dạng..."):
+                with st.spinner("AI đang tạo bài tập..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -214,35 +216,12 @@ Use exactly this JSON structure:
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # --- PHẦN XỬ LÝ PYTHON QUYẾT ĐỊNH ---
-                                try:
-                                    # Lọc bỏ dấu gạch chéo ngược ```json nếu AI ngoan cố gắn thêm
-                                    if raw_text.startswith("```json"):
-                                        raw_text = raw_text[7:-3].strip()
-                                    elif raw_text.startswith("```"):
-                                        raw_text = raw_text[3:-3].strip()
-
-                                    # Đọc dữ liệu JSON
-                                    ai_data = json.loads(raw_text)
-                                    
-                                    paragraph = ai_data.get("paragraph", "")
-                                    vocab_list = ai_data.get("vocabulary", [])
-                                    
-                                    # Lắp ráp thành chuỗi Markdown đẹp đẽ
-                                    clean_content = paragraph + "\n\n---\n### 📚 Mini Dictionary\n"
-                                    for v in vocab_list:
-                                        clean_content += f"• **{v.get('word', '')}**: {v.get('meaning', '')}\n"
-                                        
-                                except json.JSONDecodeError:
-                                    # Trường hợp xấu nhất AI làm sai JSON (cực hiếm)
-                                    clean_content = raw_text
-
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
                                     "difficulty": difficulty,
                                     "words": selected_words,
-                                    "content": clean_content
+                                    "content": raw_text
                                 }
                                 
                                 ai_history.insert(0, new_entry)
