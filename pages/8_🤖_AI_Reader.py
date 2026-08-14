@@ -70,13 +70,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- SVG ICONS DEFINITION ---
-ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>'
+ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 0 0 0-3z"/></svg>'
 
 # --- HEADER ---
 st.markdown(f"""
 <div>
     <div class="app-title">{ICON_ROBOT} AI Reading Assistant</div>
-    <div class="app-subtitle">Tạo bài đọc hiểu và thực hành ngữ cảnh từ bộ sưu tập từ vựng cá nhân</div>
+    <div class="app-subtitle">Tạo bài thực hành ngữ cảnh siêu ngắn gọn từ bộ sưu tập từ vựng cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -120,7 +120,7 @@ with tab_create:
         st.subheader("1. Chọn danh sách từ vựng")
 
         if "reader_selected_words" not in st.session_state:
-            st.session_state.reader_selected_words = user_all_words[:min(8, len(user_all_words))]
+            st.session_state.reader_selected_words = user_all_words[:min(5, len(user_all_words))]
 
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
@@ -148,9 +148,8 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "Đoạn văn ngắn gọn kèm từ điển mini",
-                    "Bài đọc hiểu + 3 câu hỏi trắc nghiệm",
-                    "Đoạn hội thoại ngắn giữa 2 người"
+                    "Đoạn văn ngắn gọn (1-3 câu)",
+                    "Đoạn hội thoại siêu ngắn (2 lượt nói)"
                 ]
             )
 
@@ -173,26 +172,23 @@ with tab_create:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
                 level_instructions = {
-                    "Easy (Câu ngắn, dễ hiểu)": "Simple short sentences, basic grammar.",
-                    "Normal (Vừa sức, tự nhiên)": "Natural flow, medium length.",
-                    "Hard (Nâng cao, học thuật)": "Academic, complex sentences."
+                    "Easy (Câu ngắn, dễ hiểu)": "Use very short and simple sentences.",
+                    "Normal (Vừa sức, tự nhiên)": "Use natural, clear English.",
+                    "Hard (Nâng cao, học thuật)": "Use professional, complex structures."
                 }
 
-                # PROMPT SIÊU KHÓA AI: KHÔNG SUY NGHĨ, KHÔNG NHÁP, RA KHUÔN MẪU CHUẨN 100%
+                # PROMPT TỐI GIẢN TỐI ĐA - BẮT AI TRẢ VỀ DUY NHẤT ĐOẠN VĂN
                 prompt_text = f"""
-You are an English teacher. Create a short practice text using these words: [{words_str}].
+Write an extremely concise English text using these words: [{words_str}].
 
-Task Type: {task_type}
-Difficulty: {difficulty} ({level_instructions[difficulty]})
+Task format: {task_type}.
+Level: {difficulty} ({level_instructions[difficulty]}).
 
-STRICT OUTPUT FORMAT RULES:
-- Output ONLY the final exercise text.
-- DO NOT output any reasoning, thinking steps, notes, explanations, or draft attempts.
-- Keep the main passage UNDER 4 SENTENCES.
-- BOLD (e.g. **word**) all target vocabulary words when they appear.
-- At the end, add a short section titled "### Vocabulary List" listing the words and their short Vietnamese meanings.
-
-START OUTPUT DIRECTLY WITH THE TITLE:
+STRICT RULES:
+1. Maximum length: 1 to 3 sentences ONLY.
+2. Bold all target words: **word**.
+3. Do NOT include titles, greetings, notes, explanations, or word lists at the end.
+4. Output ONLY the raw paragraph text.
 """
 
                 with st.spinner("AI đang tạo bài tập siêu ngắn gọn..."):
@@ -227,7 +223,7 @@ START OUTPUT DIRECTLY WITH THE TITLE:
                             res_data = res.json()
 
                             if res.status_code == 200:
-                                result_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                                result_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
