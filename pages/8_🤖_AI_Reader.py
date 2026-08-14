@@ -4,9 +4,9 @@ import datetime
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="AI Reading Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
 
-# --- CUSTOM CSS: NÂNG CẤP GIAO DIỆN CHUẨN MODERN SAAS ---
+# --- CUSTOM CSS: ICON SVG & MODERN SAAS STYLING ---
 st.markdown("""
 <style>
     .main .block-container {
@@ -15,17 +15,29 @@ st.markdown("""
         max-width: 1050px;
     }
     
-    /* Header & Subtitle */
+    /* Header */
     .app-title {
         font-size: 2rem !important;
         font-weight: 700 !important;
         color: #1E293B;
         letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     .app-subtitle {
         color: #64748B;
         font-size: 0.95rem;
         margin-bottom: 1.5rem;
+    }
+
+    /* SVG Icon Inline Base */
+    .svg-icon {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        vertical-align: -3px;
+        fill: currentColor;
     }
 
     /* Document Paper Container cho bài đọc AI */
@@ -44,9 +56,9 @@ st.markdown("""
     /* Badges Cấp độ */
     .level-badge {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 3px 8px;
         border-radius: 6px;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         font-weight: 600;
         letter-spacing: 0.3px;
     }
@@ -54,7 +66,7 @@ st.markdown("""
     .badge-normal { background-color: #E0F2FE; color: #0369A1; }
     .badge-hard { background-color: #FEE2E2; color: #B91C1C; }
 
-    /* Tag từ vựng tối giản thay cho khung xanh */
+    /* Tag từ vựng tối giản */
     .word-chip {
         display: inline-block;
         background-color: #F1F5F9;
@@ -70,17 +82,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- SVG ICONS DEFINITION ---
+ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>'
+
 # --- HEADER ---
-st.markdown("""
+st.markdown(f"""
 <div>
-    <div class="app-title">AI Reading Assistant</div>
-    <div class="app-subtitle">Tạo bài đọc hiểu và bài tập thực hành ngữ cảnh từ chính bộ sưu tập từ vựng cá nhân</div>
+    <div class="app-title">{ICON_ROBOT} AI Reading Assistant</div>
+    <div class="app-subtitle">Tạo bài đọc hiểu và thực hành ngữ cảnh từ bộ sưu tập từ vựng cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
@@ -90,13 +105,12 @@ history_file = f"ai_history_{username}.json"
 clean_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 if not clean_api_key:
-    st.error("⚠️ Hệ thống chưa được cấu hình API Key. Vui lòng thêm GEMINI_API_KEY vào Streamlit Secrets!")
+    st.error("Hệ thống chưa được cấu hình API Key. Vui lòng thêm GEMINI_API_KEY vào Streamlit Secrets!")
     st.stop()
 
-# Đọc lịch sử bài học AI đã lưu của User
+# Đọc lịch sử bài học AI
 ai_history = load_data(history_file)
-if not isinstance(ai_history, list):
-    ai_history = []
+if not isinstance(ai_history, list): ai_history = []
 
 # Đọc kho từ vựng cá nhân
 colloc_data = load_data(f"data_collocation_{username}.json")
@@ -107,14 +121,14 @@ if not isinstance(vocab_data, dict): vocab_data = {}
 user_all_words = list({**colloc_data, **vocab_data}.keys())
 
 # Tạo 2 Tab
-tab_create, tab_history = st.tabs(["🚀 Tạo bài đọc mới", "📜 Lịch sử tạo bài AI"])
+tab_create, tab_history = st.tabs(["Tạo bài đọc mới", "Lịch sử tạo bài AI"])
 
 # =========================================================
 # TAB 1: TẠO BÀI ĐỌC MỚI
 # =========================================================
 with tab_create:
     if not user_all_words:
-        st.info("💡 Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục **Add Word** hoặc **Library** để thêm từ trước nhé!")
+        st.info("Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục Add Word hoặc Library để thêm từ trước nhé!")
     else:
         st.subheader("1. Chọn danh sách từ vựng")
 
@@ -126,12 +140,12 @@ with tab_create:
 
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
-            if st.button("🎲 AI chọn ngẫu nhiên 5 từ", use_container_width=True):
+            if st.button("Tự động chọn 5 từ ngẫu nhiên", use_container_width=True):
                 st.session_state.selected_words_override = random.sample(user_all_words, min(5, len(user_all_words)))
                 st.rerun()
 
         with col_quick2:
-            if st.button("🎲 AI chọn ngẫu nhiên 10 từ", use_container_width=True):
+            if st.button("Tự động chọn 10 từ ngẫu nhiên", use_container_width=True):
                 st.session_state.selected_words_override = random.sample(user_all_words, min(10, len(user_all_words)))
                 st.rerun()
 
@@ -148,9 +162,9 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "📝 Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
-                    "📖 Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
-                    "💬 Đoạn hội thoại thực tế giữa 2 người"
+                    "Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
+                    "Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
+                    "Đoạn hội thoại thực tế giữa 2 người"
                 ]
             )
 
@@ -158,24 +172,24 @@ with tab_create:
             difficulty = st.selectbox(
                 "Cấp độ bài viết",
                 [
-                    "🌱 Easy (Đơn giản, câu ngắn)",
-                    "⚡ Normal (Trung bình, vừa sức)",
-                    "🔥 Hard (Nâng cao, học thuật)"
+                    "Easy (Đơn giản, câu ngắn)",
+                    "Normal (Trung bình, vừa sức)",
+                    "Hard (Nâng cao, học thuật)"
                 ]
             )
 
         st.divider()
 
-        if st.button("🚀 AI Tạo Bài Tập Ngay", type="primary", use_container_width=True):
+        if st.button("Tạo Bài Tập Ngay", type="primary", use_container_width=True):
             if not selected_words:
-                st.warning("⚠️ Bạn chưa chọn từ vựng nào cả!")
+                st.warning("Bạn chưa chọn từ vựng nào!")
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
                 level_instructions = {
-                    "🌱 Easy (Đơn giản, câu ngắn)": "Dùng từ vựng đơn giản, câu ngắn gọn, cấu trúc ngữ pháp cơ bản dễ hiểu, phù hợp người mới học.",
-                    "⚡ Normal (Trung bình, vừa sức)": "Dùng ngữ pháp và từ vựng thông dụng hàng ngày, độ dài vừa phải, văn phong tự nhiên.",
-                    "🔥 Hard (Nâng cao, học thuật)": "Dùng cấu trúc câu phức hợp, văn phong học thuật/chuyên nghiệp, câu dài chứa nhiều thông tin chi tiết."
+                    "Easy (Đơn giản, câu ngắn)": "Dùng từ vựng đơn giản, câu ngắn gọn, cấu trúc ngữ pháp cơ bản dễ hiểu, phù hợp người mới học.",
+                    "Normal (Trung bình, vừa sức)": "Dùng ngữ pháp và từ vựng thông dụng hàng ngày, độ dài vừa phải, văn phong tự nhiên.",
+                    "Hard (Nâng cao, học thuật)": "Dùng cấu trúc câu phức hợp, văn phong học thuật/chuyên nghiệp, câu dài chứa nhiều thông tin chi tiết."
                 }
 
                 prompt_text = f"""
@@ -194,7 +208,7 @@ YÊU CẦU BẮT BUỘC:
 5. KHÔNG lặp lại các câu hướng dẫn, KHÔNG in ra prompt. Bắt đầu ngay vào tiêu đề và nội dung bài tập.
 """
 
-                with st.spinner("🤖 AI đang suy nghĩ và biên soạn bài tập cho bạn..."):
+                with st.spinner("AI đang suy nghĩ và biên soạn bài tập cho bạn..."):
                     headers = {"Content-Type": "application/json"}
                     payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
@@ -250,36 +264,33 @@ YÊU CẦU BẮT BUỘC:
                             continue
 
                     if not success:
-                        st.error(f"❌ Có lỗi kết nối AI: {last_error}")
+                        st.error(f"Có lỗi kết nối AI: {last_error}")
 
         # Hiển thị bài đọc vừa tạo gần nhất
         if ai_history:
             latest_item = ai_history[0]
             st.write("")
-            st.subheader("📄 Bài tập AI vừa tạo gần nhất")
+            st.subheader("Bài tập AI vừa tạo gần nhất")
             
-            # Badge độ khó
             diff_str = latest_item.get('difficulty', 'Normal')
             if "Easy" in diff_str: badge_html = '<span class="level-badge badge-easy">EASY</span>'
             elif "Hard" in diff_str: badge_html = '<span class="level-badge badge-hard">HARD</span>'
             else: badge_html = '<span class="level-badge badge-normal">NORMAL</span>'
 
-            st.caption(f"🕒 Tạo lúc: {latest_item['time']} | 🎯 Dạng: {latest_item['task_type']}")
+            st.caption(f"Tạo lúc: {latest_item['time']} | Dạng: {latest_item['task_type']}")
             st.markdown(f"**Cấp độ:** {badge_html}", unsafe_allow_html=True)
             
-            # Đổi khung xanh thành các Word Chips tối giản
             chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item['words']])
             st.markdown(f"<div style='margin-top: 8px; margin-bottom: 12px;'><b>Từ vựng đưa vào bài:</b><br>{chips_html}</div>", unsafe_allow_html=True)
             
-            # Render bài tập dạng Paper
             st.markdown(f"""
             <div class="ai-paper">
                 {latest_item["content"]}
             </div>
             """, unsafe_allow_html=True)
 
-            # --- KHU VỰC THÊM TỪ MỚI NHANH TỪ BÀI ĐỌC ---
-            with st.expander("➕ Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
+            # Khung Thêm từ nhanh
+            with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
                 col_w1, col_w2, col_w3 = st.columns([2, 2, 1])
                 with col_w1:
                     new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent")
@@ -288,9 +299,9 @@ YÊU CẦU BẮT BUỘC:
                 with col_w3:
                     target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
 
-                if st.button("📌 Lưu ngay vào Kho từ vựng", type="primary", use_container_width=True):
+                if st.button("Lưu vào Kho từ vựng", type="primary", use_container_width=True):
                     if not new_w or not new_m:
-                        st.warning("⚠️ Vui lòng nhập đầy đủ Từ và Nghĩa!")
+                        st.warning("Vui lòng nhập đầy đủ Từ và Nghĩa!")
                     else:
                         clean_word = new_w.strip().lower()
                         clean_meaning = new_m.strip()
@@ -308,19 +319,19 @@ YÊU CẦU BẮT BUỘC:
                             "wrong": 0
                         }
                         save_data(repo_data, target_file)
-                        st.success(f"🎉 Đã thêm từ **'{clean_word}'** vào kho **{target_repo}** thành công!")
+                        st.success(f"Đã thêm từ '{clean_word}' vào kho {target_repo} thành công!")
                         st.rerun()
 
 # =========================================================
 # TAB 2: LỊCH SỬ TẠO BÀI AI
 # =========================================================
 with tab_history:
-    st.subheader("📜 Danh sách bài đọc AI đã lưu")
+    st.subheader("Danh sách bài đọc AI đã lưu")
     
     if not ai_history:
-        st.info("Chưa có lịch sử bài đọc nào được lưu. Hãy tạo bài đọc mới ở Tab **Tạo bài đọc mới** nhé!")
+        st.info("Chưa có lịch sử bài đọc nào được lưu. Hãy tạo bài đọc mới ở Tab 'Tạo bài đọc mới' nhé!")
     else:
-        if st.button("🗑️ Xóa toàn bộ lịch sử bài đọc", type="secondary"):
+        if st.button("Xóa toàn bộ lịch sử bài đọc", type="secondary"):
             save_data([], history_file)
             st.success("Đã xóa sạch lịch sử!")
             st.rerun()
@@ -329,7 +340,7 @@ with tab_history:
 
         for idx, item in enumerate(ai_history):
             diff_tag = item.get('difficulty', 'Normal').split(" ")[0]
-            with st.expander(f"📌 Bài #{len(ai_history) - idx} — {item['time']} [{diff_tag}] ({len(item['words'])} từ)"):
+            with st.expander(f"Bài #{len(ai_history) - idx} — {item['time']} [{diff_tag}] ({len(item['words'])} từ)"):
                 st.caption(f"**Dạng bài:** {item['task_type']} | **Cấp độ:** {diff_tag}")
                 st.write(f"**Từ vựng sử dụng:** {', '.join([f'`{w}`' for w in item['words']])}")
                 st.markdown(f"""
