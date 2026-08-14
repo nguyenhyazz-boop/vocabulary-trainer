@@ -134,8 +134,8 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "Đoạn văn ngắn (3-4 câu)",
-                    "Hội thoại ngắn"
+                    "Đoạn văn thực tế (Độ dài tùy theo số từ)",
+                    "Đoạn hội thoại thực tế"
                 ]
             )
 
@@ -157,20 +157,20 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                prompt_text = f"Write a {task_type} using these words: [{words_str}]. Level: {difficulty}. Bold the target words."
+                # MỞ KHÓA YÊU CẦU ĐỘ DÀI: Đủ dài để tạo ngữ cảnh tự nhiên
+                prompt_text = f"Write a detailed {task_type} naturally integrating all of these words: [{words_str}]. Level: {difficulty}. Ensure the text is long enough to provide a clear and natural context for every single target word (at least 5-8 sentences or longer if needed). Bold all the target words."
 
-                # VŨ KHÍ TỐI THƯỢNG: ÉP API TRẢ VỀ ĐÚNG CẤU TRÚC, KHÔNG THỂ CÓ CHỮ THỪA
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.2,
+                        "temperature": 0.4, # Nới lỏng nhiệt độ để văn phong sáng tạo và mượt mà hơn
                         "responseMimeType": "application/json",
                         "responseSchema": {
                             "type": "OBJECT",
                             "properties": {
                                 "paragraph": {
                                     "type": "STRING",
-                                    "description": "The English paragraph or conversation. Must be 3-4 sentences. Target words must be bolded."
+                                    "description": "The English paragraph or conversation. Write naturally and beautifully. The length must be proportional to the number of provided words (long enough to make sense). Target words must be bolded."
                                 },
                                 "vocabulary": {
                                     "type": "ARRAY",
@@ -190,7 +190,7 @@ with tab_create:
                     }
                 }
 
-                with st.spinner("AI đang tạo bài tập (Đảm bảo 100% không dông dài)..."):
+                with st.spinner("AI đang sáng tác bài học thực tế cho bạn..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -223,13 +223,11 @@ with tab_create:
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # Đọc dữ liệu JSON chuẩn mực từ API trả về
                                 try:
                                     ai_data = json.loads(raw_text)
                                     paragraph = ai_data.get("paragraph", "")
                                     vocab_list = ai_data.get("vocabulary", [])
                                     
-                                    # Lắp ráp thành chuỗi Markdown hiển thị ra giao diện
                                     clean_content = paragraph + "\n\n---\n### 📚 Mini Dictionary\n"
                                     for v in vocab_list:
                                         clean_content += f"• **{v.get('word', '')}**: {v.get('meaning', '')}\n"
