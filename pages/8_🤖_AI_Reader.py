@@ -1,3 +1,4 @@
+import re
 import random
 import requests
 import datetime
@@ -156,27 +157,28 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                prompt_text = f"""Create a short English paragraph using: [{words_str}]. Level: {difficulty}.
+                prompt_text = f"""Create an English paragraph (2-3 sentences) using these words: [{words_str}]. Level: {difficulty}.
 
-EXACT OUTPUT FORMAT REQUIRED (DO NOT USE HASHTAGS OR EXTRA SYMBOLS):
+FORMAT REQUIRED:
 
+[START]
 To **build from scratch**, workers at the **construction site** wear **safety helmets** while they **lay the foundation** for the building **under construction**.
 
-Vocabulary:
+Vocabulary Mini:
 • **build from scratch**: xây dựng từ con số 0
 • **construction site**: công trường xây dựng
 • **safety helmet**: mũ bảo hộ
 • **lay the foundation**: đặt nền móng
 • **under construction**: đang trong quá trình xây dựng
+[END]
 
-RULES:
-1. Paragraph length MUST BE EXACTLY 2 to 3 sentences.
-2. Bold target words using **word**.
-3. DO NOT use hashtags (#), horizontal lines (---), notes, or explanations.
-4. Only output the paragraph and the simple "Vocabulary:" list.
+Rules:
+- Include tags [START] and [END] around the final answer.
+- Paragraph must be 2 to 3 sentences long.
+- Bold target words: **word**.
 
 Input Words: [{words_str}]
-Output:"""
+"""
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
@@ -203,8 +205,9 @@ Output:"""
                     except Exception:
                         pass
 
+                    # Ưu tiên các dòng Flash nhanh, ít suy nghĩ dông dài
                     if not working_models:
-                        working_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+                        working_models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
 
                     success = False
                     last_error = ""
@@ -218,19 +221,26 @@ Output:"""
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # Xử lý làm sạch văn bản
-                                if "Output:" in raw_text:
-                                    raw_text = raw_text.split("Output:")[-1].strip()
-                                
-                                # Lọc bỏ các dấu hashtag rác nếu AI lỡ tay chèn vào
-                                raw_text = raw_text.replace("#", "").strip()
+                                # PHẪU THUẬT CẮT BỎ TOÀN BỘ PHẦN SUY NGHĨ NHÁP CỦA AI
+                                clean_content = raw_text
+                                if "[START]" in clean_content and "[END]" in clean_content:
+                                    clean_content = clean_content.split("[START]")[1].split("[END]")[0].strip()
+                                elif "[START]" in clean_content:
+                                    clean_content = clean_content.split("[START]")[1].strip()
+                                else:
+                                    # Cắt bỏ mọi dòng có dấu gạch đầu dòng nháp (•, -, *) trước đoạn văn
+                                    lines = [l for l in clean_content.split("\n") if not l.strip().startswith(("Target words:", "Constraints:", "Idea:", "Refining:", "Words included:", "Sentence count:"))]
+                                    clean_content = "\n".join(lines).strip()
+
+                                # Xóa nốt ký tự # rác nếu có
+                                clean_content = clean_content.replace("#", "").strip()
 
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
                                     "difficulty": difficulty,
                                     "words": selected_words,
-                                    "content": raw_text
+                                    "content": clean_content
                                 }
                                 
                                 ai_history.insert(0, new_entry)
@@ -320,3 +330,4 @@ with tab_history:
                 st.write(f"**Từ vựng sử dụng:** {', '.join([f'`{w}`' for w in item['words']])}")
                 with st.container(border=True):
                     st.markdown(item["content"])
+                    
