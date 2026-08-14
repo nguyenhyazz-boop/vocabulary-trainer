@@ -1,6 +1,7 @@
 import random
 import requests
 import datetime
+import json
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
@@ -156,34 +157,40 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # Dùng System Instruction để "tẩy não" AI
-                system_instruction = """You are an automated exercise generator. You NEVER use conversational text, greetings, reasoning, or thinking traces. You output ONLY the exact requested markdown format: 
-1. The paragraph.
-2. A divider (---).
-3. The bulleted dictionary. 
-Nothing before, nothing after."""
+                prompt_text = f"Write a {task_type} using these words: [{words_str}]. Level: {difficulty}. Bold the target words."
 
-                prompt_text = f"""Create an English reading practice using these words: [{words_str}]. Level: {difficulty}.
-
-FORMAT:
-[Paragraph: 3 to 4 sentences. Bold target words like **this**]
-
----
-### 📚 Mini Dictionary
-* **word**: short Vietnamese meaning
-"""
-
+                # VŨ KHÍ TỐI THƯỢNG: ÉP API TRẢ VỀ ĐÚNG CẤU TRÚC, KHÔNG THỂ CÓ CHỮ THỪA
                 payload = {
-                    "systemInstruction": {
-                        "parts": [{"text": system_instruction}]
-                    },
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.2
+                        "temperature": 0.2,
+                        "responseMimeType": "application/json",
+                        "responseSchema": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "paragraph": {
+                                    "type": "STRING",
+                                    "description": "The English paragraph or conversation. Must be 3-4 sentences. Target words must be bolded."
+                                },
+                                "vocabulary": {
+                                    "type": "ARRAY",
+                                    "description": "List of the target words used in the text.",
+                                    "items": {
+                                        "type": "OBJECT",
+                                        "properties": {
+                                            "word": {"type": "STRING"},
+                                            "meaning": {"type": "STRING", "description": "Short Vietnamese meaning of the word."}
+                                        },
+                                        "required": ["word", "meaning"]
+                                    }
+                                }
+                            },
+                            "required": ["paragraph", "vocabulary"]
+                        }
                     }
                 }
 
-                with st.spinner("AI đang tạo bài tập..."):
+                with st.spinner("AI đang tạo bài tập (Đảm bảo 100% không dông dài)..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -216,12 +223,26 @@ FORMAT:
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
+                                # Đọc dữ liệu JSON chuẩn mực từ API trả về
+                                try:
+                                    ai_data = json.loads(raw_text)
+                                    paragraph = ai_data.get("paragraph", "")
+                                    vocab_list = ai_data.get("vocabulary", [])
+                                    
+                                    # Lắp ráp thành chuỗi Markdown hiển thị ra giao diện
+                                    clean_content = paragraph + "\n\n---\n### 📚 Mini Dictionary\n"
+                                    for v in vocab_list:
+                                        clean_content += f"• **{v.get('word', '')}**: {v.get('meaning', '')}\n"
+                                        
+                                except json.JSONDecodeError:
+                                    clean_content = "Đã xảy ra lỗi khi xử lý dữ liệu từ AI. Vui lòng thử lại!"
+
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
                                     "difficulty": difficulty,
                                     "words": selected_words,
-                                    "content": raw_text
+                                    "content": clean_content
                                 }
                                 
                                 ai_history.insert(0, new_entry)
