@@ -173,23 +173,29 @@ with tab_create:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
                 level_instructions = {
-                    "Easy (Câu ngắn, dễ hiểu)": "Câu ngắn gọn 5-8 từ, ngữ pháp đơn giản tuyệt đối.",
-                    "Normal (Vừa sức, tự nhiên)": "Đoạn văn ngắn tự nhiên, độ dài vừa phải.",
-                    "Hard (Nâng cao, học thuật)": "Cấu trúc câu phức hợp, chuyên nghiệp."
+                    "Easy (Câu ngắn, dễ hiểu)": "Simple short sentences, basic grammar.",
+                    "Normal (Vừa sức, tự nhiên)": "Natural flow, medium length.",
+                    "Hard (Nâng cao, học thuật)": "Academic, complex sentences."
                 }
 
+                # PROMPT SIÊU KHÓA AI: KHÔNG SUY NGHĨ, KHÔNG NHÁP, RA KHUÔN MẪU CHUẨN 100%
                 prompt_text = f"""
-Nhiệm vụ: Tạo bài tập Tiếng Anh ngắn gọn dựa trên các từ: [{words_str}].
+You are an English teacher. Create a short practice text using these words: [{words_str}].
 
-YÊU CẦU NGHIÊM NGẶT:
-1. Dạng bài: {task_type}. Cấp độ: {difficulty} ({level_instructions[difficulty]}).
-2. Độ dài đoạn văn: TỐI ĐA 3 đến 5 CÂU. Ngắn gọn, súc tích, đi thẳng vào nội dung.
-3. BẮT BUỘC **in đậm** (bold) các từ trong danh sách trên khi xuất hiện trong bài.
-4. Cuối bài chỉ kèm danh sách từ vựng + nghĩa tiếng Việt ngắn gọn.
-5. KHÔNG chào hỏi, KHÔNG ghi chú thích thừa, KHÔNG giải thích quy trình. Đi thẳng vào bài viết.
+Task Type: {task_type}
+Difficulty: {difficulty} ({level_instructions[difficulty]})
+
+STRICT OUTPUT FORMAT RULES:
+- Output ONLY the final exercise text.
+- DO NOT output any reasoning, thinking steps, notes, explanations, or draft attempts.
+- Keep the main passage UNDER 4 SENTENCES.
+- BOLD (e.g. **word**) all target vocabulary words when they appear.
+- At the end, add a short section titled "### Vocabulary List" listing the words and their short Vietnamese meanings.
+
+START OUTPUT DIRECTLY WITH THE TITLE:
 """
 
-                with st.spinner("AI đang soạn bài tập ngắn gọn cho bạn..."):
+                with st.spinner("AI đang tạo bài tập siêu ngắn gọn..."):
                     headers = {"Content-Type": "application/json"}
                     payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
@@ -264,7 +270,6 @@ YÊU CẦU NGHIÊM NGẶT:
             chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item['words']])
             st.markdown(f"<div style='margin-top: 8px; margin-bottom: 12px;'><b>Từ vựng đưa vào bài:</b><br>{chips_html}</div>", unsafe_allow_html=True)
             
-            # ĐƯỢC FIX TẠI ĐÂY: Dùng st.container (border) kết hợp st.markdown chuẩn để dịch in đậm **text**
             with st.container(border=True):
                 st.markdown(latest_item["content"])
 
