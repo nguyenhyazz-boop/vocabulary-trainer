@@ -3,7 +3,7 @@ from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Library | Vocabulary Trainer", page_icon="📚", layout="wide")
 
-# --- CUSTOM CSS: BỘ BỘ LƯỚI THẺ TỪ VỰNG CHUẨN MODERN UI ---
+# --- CUSTOM CSS: GIAO DIỆN LIBRARY CHUẨN MODERN UI ---
 st.markdown("""
 <style>
     .main .block-container {
@@ -11,7 +11,6 @@ st.markdown("""
         padding-bottom: 3rem;
     }
     
-    /* Header & Subtitle */
     .app-title {
         font-size: 2rem !important;
         font-weight: 700 !important;
@@ -24,40 +23,24 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* Vocab Card styling */
-    .vocab-card {
+    /* Stat Box */
+    .stat-card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 18px 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-        transition: all 0.2s ease-in-out;
-        height: 100%;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
-    .vocab-card:hover {
-        border-color: #CBD5E1;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-        transform: translateY(-2px);
-    }
-    .vocab-word {
-        font-size: 1.25rem;
+    .stat-number {
+        font-size: 1.8rem;
         font-weight: 700;
         color: #0F172A;
     }
-    .vocab-meaning {
-        font-size: 1rem;
-        color: #334155;
-        font-weight: 500;
-        margin-top: 6px;
-    }
-    .vocab-example {
+    .stat-label {
         font-size: 0.85rem;
         color: #64748B;
-        font-style: italic;
-        margin-top: 8px;
-        padding-left: 8px;
-        border-left: 2px solid #E2E8F0;
+        font-weight: 500;
     }
 
     /* Badges */
@@ -75,12 +58,6 @@ st.markdown("""
     .badge-adv { background-color: #F3E8FF; color: #7E22CE; }
     .badge-phrase { background-color: #FFEDD5; color: #C2410C; }
     .badge-other { background-color: #F1F5F9; color: #475569; }
-
-    .stats-tag {
-        font-size: 0.75rem;
-        color: #94A3B8;
-        margin-top: 10px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -88,7 +65,7 @@ st.markdown("""
 st.markdown("""
 <div>
     <div class="app-title">Vocabulary Library</div>
-    <div class="app-subtitle">Quản lý, tra cứu và theo dõi tiến độ ghi nhớ toàn bộ từ vựng cá nhân</div>
+    <div class="app-subtitle">Thư viện tổng hợp và phân loại toàn bộ kho từ vựng cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -99,7 +76,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 username = st.session_state.username
 
-# --- ĐỌC DỮ LIỆU ---
 vocab_file = f"data_vocab_{username}.json"
 colloc_file = f"data_collocation_{username}.json"
 
@@ -109,92 +85,71 @@ if not isinstance(vocab_data, dict): vocab_data = {}
 colloc_data = load_data(colloc_file)
 if not isinstance(colloc_data, dict): colloc_data = {}
 
-# --- THANH TÌM KIẾM VÀ BỘ LỌC ---
-col_search, col_filter, col_repo = st.columns([3, 1.5, 1.5])
+# --- THỐNG KÊ NHANH (METRICS DASHBOARD) ---
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-number">{len(vocab_data)}</div>
+        <div class="stat-label">Từ đơn (Normal Vocab)</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_search:
-    search_query = st.text_input("Tìm kiếm từ vựng hoặc nghĩa...", placeholder="Type to search...").strip().lower()
+with c2:
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-number">{len(colloc_data)}</div>
+        <div class="stat-label">Cụm từ (Collocations)</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_filter:
-    filter_pos = st.selectbox("Loại từ", ["Tất cả", "Noun", "Verb", "Adj", "Adv", "Phrase", "Other"])
+with c3:
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-number">{len(vocab_data) + len(colloc_data)}</div>
+        <div class="stat-label">Tổng kho từ vựng</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_repo:
-    selected_repo = st.selectbox("Kho từ", ["Tất cả", "Normal Vocab", "Collocations"])
-
+st.write("")
 st.divider()
 
-# Xử lý tổng hợp từ vựng
-combined_data = {}
+# --- DANH SÁCH CHI TIẾT THEO TAB ---
+tab_vocab, tab_colloc = st.tabs(["📚 Từ đơn (Normal Vocab)", "🔗 Cụm từ (Collocations)"])
 
-if selected_repo in ["Tất cả", "Normal Vocab"]:
-    for k, v in vocab_data.items():
-        combined_data[k] = {**v, "repo": vocab_file}
+def render_vocabulary_list(data_dict, target_file):
+    if not data_dict:
+        st.info("Kho từ vựng này hiện đang trống. Hãy sang mục **Add Word** để thêm từ mới nhé!")
+        return
 
-if selected_repo in ["Tất cả", "Collocations"]:
-    for k, v in colloc_data.items():
-        combined_data[k] = {**v, "repo": colloc_file}
+    st.write("")
+    for word, info in list(data_dict.items()):
+        pos = info.get("pos", "Other")
+        meaning = info.get("meaning", "N/A")
+        example = info.get("example", "")
+        correct = info.get("correct", 0)
+        wrong = info.get("wrong", 0)
 
-# Lọc theo từ khóa tìm kiếm và Loại từ
-filtered_words = {}
-for word, info in combined_data.items():
-    meaning = info.get("meaning", "").lower()
-    pos = info.get("pos", "Other")
+        pos_key = pos.lower()
+        badge_class = f"badge-{pos_key}" if pos_key in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
 
-    # Kiểm tra khớp từ khóa
-    match_query = search_query in word or search_query in meaning
-    # Kiểm tra khớp loại từ
-    match_pos = (filter_pos == "Tất cả") or (filter_pos.lower() == pos.lower())
+        with st.expander(f"📌 **{word}** — {meaning}"):
+            col_info, col_act = st.columns([4, 1])
+            with col_info:
+                st.markdown(f"**Loại từ:** <span class='pos-badge {badge_class}'>{pos}</span>", unsafe_allow_html=True)
+                if example:
+                    st.write(f"**Ví dụ:** *\"{example}\"*")
+                st.caption(f"🎯 Đã trả lời đúng: **{correct}** lần | ❌ Trả lời sai: **{wrong}** lần")
 
-    if match_query and match_pos:
-        filtered_words[word] = info
+            with col_act:
+                if st.button("🗑️ Xóa từ", key=f"lib_del_{target_file}_{word}", use_container_width=True):
+                    del data_dict[word]
+                    save_data(data_dict, target_file)
+                    st.success(f"Đã xóa '{word}'")
+                    st.rerun()
 
-st.caption(f"Hiển thị **{len(filtered_words)}** / {len(combined_data)} từ vựng")
+with tab_vocab:
+    render_vocabulary_list(vocab_data, vocab_file)
 
-if not filtered_words:
-    st.info("Không tìm thấy từ vựng nào phù hợp!")
-else:
-    # --- HIỂN THỊ DẠNG GRID (LƯỚI 3 CỘT) ---
-    items = list(filtered_words.items())
-    
-    # Chia lưới 3 cột
-    cols_per_row = 3
-    for i in range(0, len(items), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j in range(cols_per_row):
-            if i + j < len(items):
-                word, info = items[i + j]
-                pos = info.get("pos", "Other")
-                meaning = info.get("meaning", "N/A")
-                example = info.get("example", "")
-                correct = info.get("correct", 0)
-                wrong = info.get("wrong", 0)
-
-                # Badge màu sắc
-                pos_key = pos.lower()
-                badge_class = f"badge-{pos_key}" if pos_key in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
-
-                with cols[j]:
-                    # Vẽ Card
-                    ex_html = f'<div class="vocab-example">"{example}"</div>' if example else ""
-                    st.markdown(f"""
-                    <div class="vocab-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="vocab-word">{word}</span>
-                            <span class="pos-badge {badge_class}">{pos}</span>
-                        </div>
-                        <div class="vocab-meaning">{meaning}</div>
-                        {ex_html}
-                        <div class="stats-tag">🎯 Đúng: {correct} | ❌ Sai: {wrong}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    # Nút thao tác nhỏ gọn bên dưới card
-                    with st.popover("⚙️ Thao tác"):
-                        if st.button("🗑️ Xóa từ này", key=f"del_{word}", use_container_width=True):
-                            target_file = info["repo"]
-                            repo_dict = vocab_data if target_file == vocab_file else colloc_data
-                            if word in repo_dict:
-                                del repo_dict[word]
-                                save_data(repo_dict, target_file)
-                                st.success(f"Đã xóa '{word}'")
-                                st.rerun()
+with tab_colloc:
+    render_vocabulary_list(colloc_data, colloc_file)
