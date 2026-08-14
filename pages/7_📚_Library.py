@@ -1,75 +1,71 @@
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Library", page_icon="📚", layout="wide")
+st.set_page_config(page_title="Library - Vocabulary Trainer", page_icon="📚", layout="wide")
 
-st.title("📚 Thư viện từ vựng có sẵn")
+st.title("📚 Vocabulary Library")
+st.caption("Khám phá từ vựng mẫu theo từng chủ đề và chọn từ chưa biết để thêm vào bộ sưu tập cá nhân.")
 
-# Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
 
-# Đọc file dữ liệu gốc (kho 800 từ dùng chung hoặc file cá nhân)
-vocab_file = f"data_vocab_{username}.json"
-colloc_file = f"data_collocation_{username}.json"
+# Đọc kho từ vựng mẫu và kho cá nhân của user
+sample_data = load_data("sample_words.json")
+user_colloc = load_data(f"data_collocation_{username}.json")
+user_vocab = load_data(f"data_vocab_{username}.json")
 
-# Nếu không tìm thấy file user, sẽ tự đọc file mặc định gốc (data_vocab.json / data_collocation.json)
-vocab_data = load_data(vocab_file)
-if not vocab_data:
-    vocab_data = load_data("data_vocab.json")
+user_all_words = {**user_colloc, **user_vocab}
 
-colloc_data = load_data(colloc_file)
-if not colloc_data:
-    colloc_data = load_data("data_collocation.json")
+if not sample_data:
+    st.info("Chưa có từ vựng mẫu nào trong thư viện. Vui lòng kiểm tra lại file sample_words.json!")
+    st.stop()
 
-if not isinstance(vocab_data, dict): vocab_data = {}
-if not isinstance(colloc_data, dict): colloc_data = {}
+# --- 1. DANH SÁCH CÁC CHỦ ĐỀ (TOPICS) ---
+topics = sorted(list(set(item.get("topic", "Khác") for item in sample_data.values() if isinstance(item, dict))))
 
-tab1, tab2 = st.tabs(["Từ vựng thông thường (Vocab)", "Cụm từ (Collocations)"])
+st.subheader("🎯 Chọn chủ đề bạn muốn khám phá:")
+selected_topic = st.radio("Chủ đề:", topics, horizontal=True)
 
-with tab1:
-    st.subheader(f"Danh sách từ vựng ({len(vocab_data)} từ)")
-    search_v = st.text_input("🔍 Tìm kiếm từ vựng trong kho:", key="search_v_lib").strip().lower()
+st.divider()
+
+# --- 2. LỌC VÀ HIỂN THỊ TỪ VỰNG THEO CHỦ ĐỀ ĐÃ CHỌN ---
+topic_words = {
+    w: item for w, item in sample_data.items()
+    if isinstance(item, dict) and item.get("topic") == selected_topic
+}
+
+st.write(f"Chủ đề **{selected_topic}** có **{len(topic_words)}** từ vựng mẫu:")
+
+for word, item in topic_words.items():
+    meaning = item.get("meaning", "")
+    w_type = item.get("type", "vocab")
+    pos_tag = item.get("pos", "")
     
-    filtered_v = {k: v for k, v in vocab_data.items() if search_v in k.lower() or search_v in v.get("meaning", "").lower()}
+    col1, col2 = st.columns([3, 1])
     
-    if not filtered_v:
-        st.info("Không tìm thấy từ vựng nào.")
-    else:
-        for word, info in filtered_v.items():
-            with st.expander(f"📌 **{word}** — {info.get('meaning', '')}"):
-                if "pos" in info:
-                    st.write(f"**Loại từ:** {info['pos']}")
-                if "example" in info and info["example"]:
-                    st.write(f"**Ví dụ:** *{info['example']}*")
+    with col1:
+        type_badge = "🔗 Collocation" if w_type == "collocation" else "🔤 Vocab"
+        pos_display = f" (*{pos_tag}*)" if pos_tag else ""
+        st.markdown(f"📌 **{word}**{pos_display} (`{type_badge}`) — **{meaning}**")
+        
+    with col2:
+        if word in user_all_words:
+            st.success("✅ Đã có trong bộ học")
+        else:
+            if st.button("➕ Thêm vào bộ học", key=f"lib_add_{word}", type="primary"):
+                target_file = f"data_collocation_{username}.json" if w_type == "collocation" else f"data_vocab_{username}.json"
+                user_repo = load_data(target_file)
                 
-                col_del, _ = st.columns([1, 4])
-                with col_del:
-                    if st.button("Xóa khỏi kho", key=f"del_lib_v_{word}"):
-                        del vocab_data[word]
-                        save_data(vocab_data, vocab_file)
-                        st.rerun()
-
-with tab2:
-    st.subheader(f"Danh sách cụm từ ({len(colloc_data)} cụm từ)")
-    search_c = st.text_input("🔍 Tìm kiếm cụm từ trong kho:", key="search_c_lib").strip().lower()
-    
-    filtered_c = {k: v for k, v in colloc_data.items() if search_c in k.lower() or search_c in v.get("meaning", "").lower()}
-    
-    if not filtered_c:
-        st.info("Không tìm thấy cụm từ nào.")
-    else:
-        for word, info in filtered_c.items():
-            with st.expander(f"📌 **{word}** — {info.get('meaning', '')}"):
-                if "example" in info and info["example"]:
-                    st.write(f"**Ví dụ:** *{info['example']}*")
-                
-                col_del, _ = st.columns([1, 4])
-                with col_del:
-                    if st.button("Xóa khỏi kho", key=f"del_lib_c_{word}"):
-                        del colloc_data[word]
-                        save_data(colloc_data, colloc_file)
-                        st.rerun()
+                user_repo[word] = {
+                    "meaning": meaning,
+                    "topic": selected_topic,
+                    "pos": pos_tag,
+                    "correct": 0,
+                    "wrong": 0
+                }
+                save_data(user_repo, target_file)
+                st.success(f"Đã thêm **{word}**!")
+                st.rerun()
