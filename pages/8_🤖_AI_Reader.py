@@ -132,26 +132,28 @@ with tab_create:
     else:
         st.subheader("1. Chọn danh sách từ vựng")
 
-        selected_words = st.multiselect(
-            "Tích chọn các từ/cụm từ bạn muốn đưa vào bài tập:",
-            options=user_all_words,
-            default=user_all_words[:min(8, len(user_all_words))]
-        )
+        # Khởi tạo danh sách mặc định nếu chưa có
+        if "reader_selected_words" not in st.session_state:
+            st.session_state.reader_selected_words = user_all_words[:min(8, len(user_all_words))]
 
+        # Hai nút bấm chọn nhanh - Cập nhật trực tiếp Session State
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
             if st.button("Tự động chọn 5 từ ngẫu nhiên", use_container_width=True):
-                st.session_state.selected_words_override = random.sample(user_all_words, min(5, len(user_all_words)))
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
                 st.rerun()
 
         with col_quick2:
             if st.button("Tự động chọn 10 từ ngẫu nhiên", use_container_width=True):
-                st.session_state.selected_words_override = random.sample(user_all_words, min(10, len(user_all_words)))
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(10, len(user_all_words)))
                 st.rerun()
 
-        if "selected_words_override" in st.session_state:
-            selected_words = st.session_state.selected_words_override
-            del st.session_state.selected_words_override
+        # Multiselect liên kết trực tiếp key với Session State
+        selected_words = st.multiselect(
+            "Tích chọn các từ/cụm từ bạn muốn đưa vào bài tập:",
+            options=user_all_words,
+            key="reader_selected_words"
+        )
 
         st.write("")
         st.subheader("2. Thiết lập cấu hình bài tập")
