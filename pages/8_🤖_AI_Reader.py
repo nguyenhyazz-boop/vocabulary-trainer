@@ -156,39 +156,36 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # MẪU FEW-SHOT CHUẨN: ĐOẠN VĂN 3-4 CÂU + TỪ ĐIỂN MINI Ở DƯỚI
-                prompt_text = f"""Create a practical English reading exercise using these target words: [{words_str}].
-Level: {difficulty}.
+                prompt_text = f"""Create a short English paragraph using: [{words_str}]. Level: {difficulty}.
 
-EXAMPLE FORMAT TO FOLLOW STRICTLY:
+EXACT OUTPUT FORMAT REQUIRED (DO NOT USE HASHTAGS OR EXTRA SYMBOLS):
 
-To **build from scratch**, the team must work carefully at the **construction site**. Every worker is required to wear a **safety helmet** for maximum security. Today, they will **lay the foundation** for the new building while the entire area remains **under construction**.
+To **build from scratch**, workers at the **construction site** wear **safety helmets** while they **lay the foundation** for the building **under construction**.
 
----
-### 📚 Mini Dictionary
-* **build from scratch**: xây dựng từ con số 0
-* **construction site**: công trường xây dựng
-* **safety helmet**: mũ bảo hộ
-* **lay the foundation**: đặt nền móng
-* **under construction**: đang trong quá trình xây dựng
+Vocabulary:
+• **build from scratch**: xây dựng từ con số 0
+• **construction site**: công trường xây dựng
+• **safety helmet**: mũ bảo hộ
+• **lay the foundation**: đặt nền móng
+• **under construction**: đang trong quá trình xây dựng
 
-STRICT RULES:
-1. Write a passage of 3 to 5 clear, meaningful sentences.
-2. Bold all target words in the paragraph: **word**.
-3. Include the "---" separator and "### 📚 Mini Dictionary" section listing the target words with short Vietnamese meanings.
-4. Do NOT output any reasoning, thinking steps, notes, or intros.
+RULES:
+1. Paragraph length MUST BE EXACTLY 2 to 3 sentences.
+2. Bold target words using **word**.
+3. DO NOT use hashtags (#), horizontal lines (---), notes, or explanations.
+4. Only output the paragraph and the simple "Vocabulary:" list.
 
-Now create the exercise for: [{words_str}]
+Input Words: [{words_str}]
 Output:"""
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.2
+                        "temperature": 0.1
                     }
                 }
 
-                with st.spinner("AI đang soạn bài đọc và từ điển mini cho bạn..."):
+                with st.spinner("AI đang tạo bài tập..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -221,8 +218,12 @@ Output:"""
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
+                                # Xử lý làm sạch văn bản
                                 if "Output:" in raw_text:
                                     raw_text = raw_text.split("Output:")[-1].strip()
+                                
+                                # Lọc bỏ các dấu hashtag rác nếu AI lỡ tay chèn vào
+                                raw_text = raw_text.replace("#", "").strip()
 
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
