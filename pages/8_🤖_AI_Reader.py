@@ -65,12 +65,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 0 0 0-3z"/></svg>'
+ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>'
 
 st.markdown(f"""
 <div>
     <div class="app-title">{ICON_ROBOT} AI Reading Assistant</div>
-    <div class="app-subtitle">Tạo bài thực hành ngữ cảnh siêu ngắn gọn từ bộ sưu tập từ vựng cá nhân</div>
+    <div class="app-subtitle">Tạo bài thực hành ngữ cảnh kèm từ điển mini từ bộ sưu tập từ vựng cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -102,20 +102,20 @@ with tab_create:
     if not user_all_words:
         st.info("Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục Add Word hoặc Library để thêm từ trước nhé!")
     else:
-        st.subheader("1. Chọn từ vựng (Khuyên dùng 3-5 từ)")
+        st.subheader("1. Chọn từ vựng luyện tập")
 
         if "reader_selected_words" not in st.session_state:
-            st.session_state.reader_selected_words = user_all_words[:min(4, len(user_all_words))]
+            st.session_state.reader_selected_words = user_all_words[:min(5, len(user_all_words))]
 
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
-            if st.button("🎲 AI chọn ngẫu nhiên 3 từ", use_container_width=True):
-                st.session_state.reader_selected_words = random.sample(user_all_words, min(3, len(user_all_words)))
+            if st.button("🎲 AI chọn ngẫu nhiên 5 từ", use_container_width=True):
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
                 st.rerun()
 
         with col_quick2:
-            if st.button("🎲 AI chọn ngẫu nhiên 5 từ", use_container_width=True):
-                st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
+            if st.button("🎲 AI chọn ngẫu nhiên 8 từ", use_container_width=True):
+                st.session_state.reader_selected_words = random.sample(user_all_words, min(8, len(user_all_words)))
                 st.rerun()
 
         selected_words = st.multiselect(
@@ -133,8 +133,8 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "Đoạn văn ngắn gọn (1-2 câu)",
-                    "Hội thoại siêu ngắn (2 lượt nói)"
+                    "Đoạn văn ngắn gọn kèm từ điển mini",
+                    "Đoạn hội thoại ngắn kèm từ điển mini"
                 ]
             )
 
@@ -142,9 +142,9 @@ with tab_create:
             difficulty = st.selectbox(
                 "Cấp độ bài viết",
                 [
-                    "Easy (Đơn giản)",
-                    "Normal (Vừa sức)",
-                    "Hard (Nâng cao)"
+                    "Easy (Đơn giản, dễ hiểu)",
+                    "Normal (Vừa sức, tự nhiên)",
+                    "Hard (Nâng cao, học thuật)"
                 ]
             )
 
@@ -156,23 +156,39 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # DÙNG VÍ DỤ MẪU (FEW-SHOT PROMPTING) ĐỂ BẮT AI CHỈ IN RA DUY NHẤT ĐOẠN VĂN
-                prompt_text = f"""Task: Combine the given words into a 1-2 sentence paragraph. Level: {difficulty}.
+                # MẪU FEW-SHOT CHUẨN: ĐOẠN VĂN 3-4 CÂU + TỪ ĐIỂN MINI Ở DƯỚI
+                prompt_text = f"""Create a practical English reading exercise using these target words: [{words_str}].
+Level: {difficulty}.
 
-Example Input: ['contractor', 'blueprint', 'demolition']
-Example Output: The **contractor** checked the **blueprint** before starting the **demolition**.
+EXAMPLE FORMAT TO FOLLOW STRICTLY:
 
-Input Words: [{words_str}]
+To **build from scratch**, the team must work carefully at the **construction site**. Every worker is required to wear a **safety helmet** for maximum security. Today, they will **lay the foundation** for the new building while the entire area remains **under construction**.
+
+---
+### 📚 Mini Dictionary
+* **build from scratch**: xây dựng từ con số 0
+* **construction site**: công trường xây dựng
+* **safety helmet**: mũ bảo hộ
+* **lay the foundation**: đặt nền móng
+* **under construction**: đang trong quá trình xây dựng
+
+STRICT RULES:
+1. Write a passage of 3 to 5 clear, meaningful sentences.
+2. Bold all target words in the paragraph: **word**.
+3. Include the "---" separator and "### 📚 Mini Dictionary" section listing the target words with short Vietnamese meanings.
+4. Do NOT output any reasoning, thinking steps, notes, or intros.
+
+Now create the exercise for: [{words_str}]
 Output:"""
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.1 # Rút nhiệt độ xuống 0.1 để AI làm đúng mẫu 100%, không sáng tạo lung tung
+                        "temperature": 0.2
                     }
                 }
 
-                with st.spinner("AI đang tạo bài tập..."):
+                with st.spinner("AI đang soạn bài đọc và từ điển mini cho bạn..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -205,7 +221,6 @@ Output:"""
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # Hậu xử lý dữ liệu: Nếu AI vẫn cố tình nhả "Output:", cắt bỏ nó luôn!
                                 if "Output:" in raw_text:
                                     raw_text = raw_text.split("Output:")[-1].strip()
 
