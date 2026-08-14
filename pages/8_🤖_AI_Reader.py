@@ -40,19 +40,6 @@ st.markdown("""
         fill: currentColor;
     }
 
-    /* Document Paper Container cho bài đọc AI */
-    .ai-paper {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 16px;
-        padding: 28px 32px;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
-        margin-top: 15px;
-        margin-bottom: 20px;
-        line-height: 1.7;
-        color: #334155;
-    }
-
     /* Badges Cấp độ */
     .level-badge {
         display: inline-block;
@@ -191,7 +178,6 @@ with tab_create:
                     "Hard (Nâng cao, học thuật)": "Cấu trúc câu phức hợp, chuyên nghiệp."
                 }
 
-                # PROMPT TINH GỌN - ÉP AI VIẾT NGẮN GỌN VÀO TRỌNG TÂM
                 prompt_text = f"""
 Nhiệm vụ: Tạo bài tập Tiếng Anh ngắn gọn dựa trên các từ: [{words_str}].
 
@@ -278,11 +264,9 @@ YÊU CẦU NGHIÊM NGẶT:
             chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item['words']])
             st.markdown(f"<div style='margin-top: 8px; margin-bottom: 12px;'><b>Từ vựng đưa vào bài:</b><br>{chips_html}</div>", unsafe_allow_html=True)
             
-            st.markdown(f"""
-            <div class="ai-paper">
-                {latest_item["content"]}
-            </div>
-            """, unsafe_allow_html=True)
+            # ĐƯỢC FIX TẠI ĐÂY: Dùng st.container (border) kết hợp st.markdown chuẩn để dịch in đậm **text**
+            with st.container(border=True):
+                st.markdown(latest_item["content"])
 
             # Khung Thêm từ nhanh
             with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
@@ -338,8 +322,5 @@ with tab_history:
             with st.expander(f"Bài #{len(ai_history) - idx} — {item['time']} [{diff_tag}] ({len(item['words'])} từ)"):
                 st.caption(f"**Dạng bài:** {item['task_type']} | **Cấp độ:** {diff_tag}")
                 st.write(f"**Từ vựng sử dụng:** {', '.join([f'`{w}`' for w in item['words']])}")
-                st.markdown(f"""
-                <div class="ai-paper">
-                    {item["content"]}
-                </div>
-                """, unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown(item["content"])
