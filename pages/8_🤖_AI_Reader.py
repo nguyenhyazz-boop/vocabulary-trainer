@@ -54,13 +54,18 @@ st.markdown("""
     .badge-normal { background-color: #E0F2FE; color: #0369A1; }
     .badge-hard { background-color: #FEE2E2; color: #B91C1C; }
 
-    /* Quick Add Box */
-    .quick-add-card {
-        background-color: #F8FAFC;
+    /* Tag từ vựng tối giản thay cho khung xanh */
+    .word-chip {
+        display: inline-block;
+        background-color: #F1F5F9;
+        color: #334155;
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 20px;
-        margin-top: 20px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-right: 6px;
+        margin-bottom: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -261,7 +266,10 @@ YÊU CẦU BẮT BUỘC:
 
             st.caption(f"🕒 Tạo lúc: {latest_item['time']} | 🎯 Dạng: {latest_item['task_type']}")
             st.markdown(f"**Cấp độ:** {badge_html}", unsafe_allow_html=True)
-            st.info(f"📌 Các từ vựng đưa vào bài: {', '.join([f'`{w}`' for w in latest_item['words']])}")
+            
+            # Đổi khung xanh thành các Word Chips tối giản
+            chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item['words']])
+            st.markdown(f"<div style='margin-top: 8px; margin-bottom: 12px;'><b>Từ vựng đưa vào bài:</b><br>{chips_html}</div>", unsafe_allow_html=True)
             
             # Render bài tập dạng Paper
             st.markdown(f"""
