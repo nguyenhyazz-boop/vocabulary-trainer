@@ -132,11 +132,9 @@ with tab_create:
     else:
         st.subheader("1. Chọn danh sách từ vựng")
 
-        # Khởi tạo danh sách mặc định nếu chưa có
         if "reader_selected_words" not in st.session_state:
             st.session_state.reader_selected_words = user_all_words[:min(8, len(user_all_words))]
 
-        # Hai nút bấm chọn nhanh - Cập nhật trực tiếp Session State
         col_quick1, col_quick2 = st.columns(2)
         with col_quick1:
             if st.button("Tự động chọn 5 từ ngẫu nhiên", use_container_width=True):
@@ -148,7 +146,6 @@ with tab_create:
                 st.session_state.reader_selected_words = random.sample(user_all_words, min(10, len(user_all_words)))
                 st.rerun()
 
-        # Multiselect liên kết trực tiếp key với Session State
         selected_words = st.multiselect(
             "Tích chọn các từ/cụm từ bạn muốn đưa vào bài tập:",
             options=user_all_words,
@@ -164,9 +161,9 @@ with tab_create:
             task_type = st.selectbox(
                 "Dạng bài tập",
                 [
-                    "Đoạn văn luyện dịch (Anh -> Việt) kèm chú thích từ",
-                    "Bài đọc hiểu Tiếng Anh + 3 câu hỏi trắc nghiệm",
-                    "Đoạn hội thoại thực tế giữa 2 người"
+                    "Đoạn văn ngắn gọn kèm từ điển mini",
+                    "Bài đọc hiểu + 3 câu hỏi trắc nghiệm",
+                    "Đoạn hội thoại ngắn giữa 2 người"
                 ]
             )
 
@@ -174,8 +171,8 @@ with tab_create:
             difficulty = st.selectbox(
                 "Cấp độ bài viết",
                 [
-                    "Easy (Đơn giản, câu ngắn)",
-                    "Normal (Trung bình, vừa sức)",
+                    "Easy (Câu ngắn, dễ hiểu)",
+                    "Normal (Vừa sức, tự nhiên)",
                     "Hard (Nâng cao, học thuật)"
                 ]
             )
@@ -189,28 +186,24 @@ with tab_create:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
                 level_instructions = {
-                    "Easy (Đơn giản, câu ngắn)": "Dùng từ vựng đơn giản, câu ngắn gọn, cấu trúc ngữ pháp cơ bản dễ hiểu, phù hợp người mới học.",
-                    "Normal (Trung bình, vừa sức)": "Dùng ngữ pháp và từ vựng thông dụng hàng ngày, độ dài vừa phải, văn phong tự nhiên.",
-                    "Hard (Nâng cao, học thuật)": "Dùng cấu trúc câu phức hợp, văn phong học thuật/chuyên nghiệp, câu dài chứa nhiều thông tin chi tiết."
+                    "Easy (Câu ngắn, dễ hiểu)": "Câu ngắn gọn 5-8 từ, ngữ pháp đơn giản tuyệt đối.",
+                    "Normal (Vừa sức, tự nhiên)": "Đoạn văn ngắn tự nhiên, độ dài vừa phải.",
+                    "Hard (Nâng cao, học thuật)": "Cấu trúc câu phức hợp, chuyên nghiệp."
                 }
 
+                # PROMPT TINH GỌN - ÉP AI VIẾT NGẮN GỌN VÀO TRỌNG TÂM
                 prompt_text = f"""
-Hãy đóng vai một giáo viên Tiếng Anh xuất sắc. 
+Nhiệm vụ: Tạo bài tập Tiếng Anh ngắn gọn dựa trên các từ: [{words_str}].
 
-Nhiệm vụ: Viết một bài tập Tiếng Anh dựa trên danh sách từ/cụm từ sau: [{words_str}].
-
-CẤP ĐỘ BÀI VIẾT: {difficulty}
-Yêu cầu độ khó: {level_instructions[difficulty]}
-
-YÊU CẦU BẮT BUỘC:
-1. Dạng bài yêu cầu: {task_type}.
-2. Trong phần văn bản tiếng Anh, hãy **in đậm** (bold) chính xác các từ/cụm từ trong danh sách trên mỗi khi chúng xuất hiện.
-3. Nội dung bài viết phải mạch lạc, chuẩn ngữ pháp và tuân thủ đúng CẤP ĐỘ đã chọn.
-4. Ở cuối bài, cung cấp một danh sách tổng hợp lại các từ vựng đã dùng kèm giải nghĩa tiếng Việt ngắn gọn.
-5. KHÔNG lặp lại các câu hướng dẫn, KHÔNG in ra prompt. Bắt đầu ngay vào tiêu đề và nội dung bài tập.
+YÊU CẦU NGHIÊM NGẶT:
+1. Dạng bài: {task_type}. Cấp độ: {difficulty} ({level_instructions[difficulty]}).
+2. Độ dài đoạn văn: TỐI ĐA 3 đến 5 CÂU. Ngắn gọn, súc tích, đi thẳng vào nội dung.
+3. BẮT BUỘC **in đậm** (bold) các từ trong danh sách trên khi xuất hiện trong bài.
+4. Cuối bài chỉ kèm danh sách từ vựng + nghĩa tiếng Việt ngắn gọn.
+5. KHÔNG chào hỏi, KHÔNG ghi chú thích thừa, KHÔNG giải thích quy trình. Đi thẳng vào bài viết.
 """
 
-                with st.spinner("AI đang suy nghĩ và biên soạn bài tập cho bạn..."):
+                with st.spinner("AI đang soạn bài tập ngắn gọn cho bạn..."):
                     headers = {"Content-Type": "application/json"}
                     payload = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
