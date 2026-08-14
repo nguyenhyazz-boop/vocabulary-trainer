@@ -157,13 +157,12 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                # MỞ KHÓA YÊU CẦU ĐỘ DÀI: Đủ dài để tạo ngữ cảnh tự nhiên
                 prompt_text = f"Write a detailed {task_type} naturally integrating all of these words: [{words_str}]. Level: {difficulty}. Ensure the text is long enough to provide a clear and natural context for every single target word (at least 5-8 sentences or longer if needed). Bold all the target words."
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.4, # Nới lỏng nhiệt độ để văn phong sáng tạo và mượt mà hơn
+                        "temperature": 0.4,
                         "responseMimeType": "application/json",
                         "responseSchema": {
                             "type": "OBJECT",
@@ -279,12 +278,19 @@ with tab_create:
                 st.markdown(latest_item["content"])
 
             with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
-                col_w1, col_w2, col_w3 = st.columns([2, 2, 1])
+                # Chia làm 4 cột để có chỗ chèn Loại từ
+                col_w1, col_w2, col_w3, col_w4 = st.columns([3, 3, 2, 2])
                 with col_w1:
                     new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent")
                 with col_w2:
                     new_m = st.text_input("Nghĩa tiếng Việt:", key="add_quick_meaning", placeholder="e.g. vĩnh viễn")
                 with col_w3:
+                    new_pos = st.selectbox(
+                        "Loại từ:", 
+                        ["(Không rõ)", "Danh từ (n)", "Động từ (v)", "Tính từ (adj)", "Trạng từ (adv)", "Giới từ (prep)", "Khác"], 
+                        key="add_quick_pos"
+                    )
+                with col_w4:
                     target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
 
                 if st.button("Lưu vào Kho từ vựng", type="primary", use_container_width=True):
@@ -293,6 +299,7 @@ with tab_create:
                     else:
                         clean_word = new_w.strip().lower()
                         clean_meaning = new_m.strip()
+                        clean_pos = "" if new_pos == "(Không rõ)" else new_pos
                         
                         if target_repo == "Collocations":
                             target_file = f"data_collocation_{username}.json"
@@ -301,8 +308,10 @@ with tab_create:
                             target_file = f"data_vocab_{username}.json"
                             repo_data = vocab_data
 
+                        # Lưu thêm trường 'pos' vào data
                         repo_data[clean_word] = {
                             "meaning": clean_meaning,
+                            "pos": clean_pos,
                             "correct": 0,
                             "wrong": 0
                         }
