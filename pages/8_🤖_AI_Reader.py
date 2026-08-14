@@ -157,37 +157,35 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                prompt_text = f"""Create an English paragraph (2-3 sentences) using these words: [{words_str}]. Level: {difficulty}.
+                prompt_text = f"""Hãy đóng vai giáo viên Tiếng Anh. Viết một đoạn văn Tiếng Anh thực tế chứa các từ: [{words_str}].
 
-FORMAT REQUIRED:
+YÊU CẦU ĐỊNH DẠNG BẮT BUỘC:
+1. Đặt toàn bộ nội dung kết quả nằm giữa hai thẻ [START] và [END].
+2. Phần bài viết: gồm đúng 2 đến 4 câu Tiếng Anh hay, chuẩn ngữ pháp cấp độ {difficulty}.
+3. Tất cả các từ vựng trong danh sách trên phải được **in đậm** (dùng **từ_vựng**).
+4. Phía dưới đoạn văn, ghi một mục nhỏ "Vocabulary Mini:" liệt kê danh sách từ vựng + dịch nghĩa tiếng Việt ngắn gọn (dạng • **word**: nghĩa).
+5. KHÔNG viết lời chào, KHÔNG nháp, KHÔNG ghi chú thích quy trình.
 
+Mẫu khung đầu ra:
 [START]
-To **build from scratch**, workers at the **construction site** wear **safety helmets** while they **lay the foundation** for the building **under construction**.
+(Đoạn văn tiếng Anh 2-4 câu có in đậm từ vựng)
 
 Vocabulary Mini:
-• **build from scratch**: xây dựng từ con số 0
-• **construction site**: công trường xây dựng
-• **safety helmet**: mũ bảo hộ
-• **lay the foundation**: đặt nền móng
-• **under construction**: đang trong quá trình xây dựng
+• **từ 1**: nghĩa
+• **từ 2**: nghĩa
 [END]
 
-Rules:
-- Include tags [START] and [END] around the final answer.
-- Paragraph must be 2 to 3 sentences long.
-- Bold target words: **word**.
-
-Input Words: [{words_str}]
+Hãy tạo bài viết cho các từ: [{words_str}]
 """
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.1
+                        "temperature": 0.7
                     }
                 }
 
-                with st.spinner("AI đang tạo bài tập..."):
+                with st.spinner("AI đang tạo bài tập thực tế cho bạn..."):
                     headers = {"Content-Type": "application/json"}
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
@@ -205,7 +203,6 @@ Input Words: [{words_str}]
                     except Exception:
                         pass
 
-                    # Ưu tiên các dòng Flash nhanh, ít suy nghĩ dông dài
                     if not working_models:
                         working_models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
 
@@ -221,18 +218,13 @@ Input Words: [{words_str}]
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # PHẪU THUẬT CẮT BỎ TOÀN BỘ PHẦN SUY NGHĨ NHÁP CỦA AI
+                                # Lọc lấy đúng phần nội dung thật trong thẻ [START] và [END]
                                 clean_content = raw_text
                                 if "[START]" in clean_content and "[END]" in clean_content:
                                     clean_content = clean_content.split("[START]")[1].split("[END]")[0].strip()
                                 elif "[START]" in clean_content:
-                                    clean_content = clean_content.split("[START]")[1].strip()
-                                else:
-                                    # Cắt bỏ mọi dòng có dấu gạch đầu dòng nháp (•, -, *) trước đoạn văn
-                                    lines = [l for l in clean_content.split("\n") if not l.strip().startswith(("Target words:", "Constraints:", "Idea:", "Refining:", "Words included:", "Sentence count:"))]
-                                    clean_content = "\n".join(lines).strip()
+                                    clean_content = clean_content.split("[START]")[1].replace("[END]", "").strip()
 
-                                # Xóa nốt ký tự # rác nếu có
                                 clean_content = clean_content.replace("#", "").strip()
 
                                 new_entry = {
@@ -330,4 +322,3 @@ with tab_history:
                 st.write(f"**Từ vựng sử dụng:** {', '.join([f'`{w}`' for w in item['words']])}")
                 with st.container(border=True):
                     st.markdown(item["content"])
-                    
