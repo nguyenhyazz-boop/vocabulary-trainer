@@ -1,4 +1,3 @@
-import re
 import random
 import requests
 import datetime
@@ -157,31 +156,21 @@ with tab_create:
             else:
                 words_str = ", ".join([f"'{w}'" for w in selected_words])
 
-                prompt_text = f"""Hãy đóng vai giáo viên Tiếng Anh. Viết một đoạn văn Tiếng Anh thực tế chứa các từ: [{words_str}].
+                # Prompt trực diện, không dùng tag ẩn để tránh lỗi nuốt chữ
+                prompt_text = f"""Write a short English paragraph (3-4 sentences) using all of these words: [{words_str}].
 
-YÊU CẦU ĐỊNH DẠNG BẮT BUỘC:
-1. Đặt toàn bộ nội dung kết quả nằm giữa hai thẻ [START] và [END].
-2. Phần bài viết: gồm đúng 2 đến 4 câu Tiếng Anh hay, chuẩn ngữ pháp cấp độ {difficulty}.
-3. Tất cả các từ vựng trong danh sách trên phải được **in đậm** (dùng **từ_vựng**).
-4. Phía dưới đoạn văn, ghi một mục nhỏ "Vocabulary Mini:" liệt kê danh sách từ vựng + dịch nghĩa tiếng Việt ngắn gọn (dạng • **word**: nghĩa).
-5. KHÔNG viết lời chào, KHÔNG nháp, KHÔNG ghi chú thích quy trình.
+Level: {difficulty}.
 
-Mẫu khung đầu ra:
-[START]
-(Đoạn văn tiếng Anh 2-4 câu có in đậm từ vựng)
-
-Vocabulary Mini:
-• **từ 1**: nghĩa
-• **từ 2**: nghĩa
-[END]
-
-Hãy tạo bài viết cho các từ: [{words_str}]
+Requirement:
+1. Bold each target word when used (e.g. **word**).
+2. Right below the paragraph, list all target words with their short Vietnamese meanings under a section titled "### 📚 Mini Dictionary".
+3. Do NOT write any reasoning, introductory remarks, or draft notes. Start directly with the paragraph.
 """
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt_text}]}],
                     "generationConfig": {
-                        "temperature": 0.7
+                        "temperature": 0.5
                     }
                 }
 
@@ -218,21 +207,12 @@ Hãy tạo bài viết cho các từ: [{words_str}]
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
                                 
-                                # Lọc lấy đúng phần nội dung thật trong thẻ [START] và [END]
-                                clean_content = raw_text
-                                if "[START]" in clean_content and "[END]" in clean_content:
-                                    clean_content = clean_content.split("[START]")[1].split("[END]")[0].strip()
-                                elif "[START]" in clean_content:
-                                    clean_content = clean_content.split("[START]")[1].replace("[END]", "").strip()
-
-                                clean_content = clean_content.replace("#", "").strip()
-
                                 new_entry = {
                                     "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "task_type": task_type,
                                     "difficulty": difficulty,
                                     "words": selected_words,
-                                    "content": clean_content
+                                    "content": raw_text
                                 }
                                 
                                 ai_history.insert(0, new_entry)
