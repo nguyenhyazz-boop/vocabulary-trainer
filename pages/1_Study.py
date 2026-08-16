@@ -153,6 +153,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- 5. SHOW MEANING & EXAMPLE (THIẾT KẾ ĐẦY ĐẶN BẢO BỌC) ---
+# --- 5. SHOW MEANING & EXAMPLE (TO RÕ NỔI BẬT) ---
 with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     word_info = data[current_word]
     if isinstance(word_info, dict):
@@ -160,19 +161,19 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Hàng 1: Nghĩa to & Tag loại từ nằm sát nhau
+        # Nghĩa tiếng Việt siêu to rực rỡ + Tag Loại từ
         st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 1.5rem; font-weight: 700; color: #0F172A;">{meaning}</span>
-            <span class="pos-badge badge-other" style="padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background-color: #F1F5F9; color: #475569;">{pos_tag}</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px;">
+            <span style="font-size: 2.2rem; font-weight: 800; color: #0F172A; line-height: 1.2;">{meaning}</span>
+            <span class="pos-badge badge-other" style="padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; background-color: #F1F5F9; color: #475569;">{pos_tag}</span>
         </div>
         """, unsafe_allow_html=True)
 
-        # Hàng 2: Khối câu ví dụ nổi bật ôm trọn nội dung
+        # Ví dụ phóng to, bỏ ô nền xám, in đậm chuẩn từ vựng
         if example_text:
             clean_ex = example_text.strip()
             
-            # Tự động chuyển Markdown **word** sang thẻ <b>word</b> để rendered mượt trong HTML
+            # Xử lý bôi đậm từ vựng sạch sẽ không bị lòi dấu **
             if current_word.lower() in clean_ex.lower() and "<b>" not in clean_ex.lower():
                 pattern = re.compile(re.escape(current_word), re.IGNORECASE)
                 clean_ex = pattern.sub(lambda m: f"<b>{m.group(0)}</b>", clean_ex)
@@ -180,16 +181,16 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
                 clean_ex = clean_ex.replace("**", "<b>", 1).replace("**", "</b>", 1)
 
             st.markdown(f"""
-            <div class="example-block">
-                <div class="example-title">Example</div>
-                <div class="example-content">"{clean_ex}"</div>
+            <div style="border-top: 1px dashed #E2E8F0; padding-top: 14px; margin-top: 10px;">
+                <div style="font-size: 1.35rem; color: #334155; font-style: italic; line-height: 1.5;">
+                    "{clean_ex}"
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
     else:
         meaning = str(word_info)
-        st.markdown(f'<div style="font-size: 1.4rem; font-weight: 700; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
-
+        st.markdown(f'<div style="font-size: 2.2rem; font-weight: 800; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
 # --- 6. NÚT ĐÁNH GIÁ ---
 st.write("")
 col1, col2 = st.columns(2)
