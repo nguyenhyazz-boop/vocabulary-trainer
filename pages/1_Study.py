@@ -5,13 +5,14 @@ from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Study | Vocabulary Trainer", page_icon="📖", layout="wide")
 
-# --- CUSTOM CSS: MINIMALIST SAAS STYLING ---
+# --- CUSTOM CSS: BÓP HẸP KHUNG CHO VỪA MẮT & NỔI BẬT KHỐI NỘI DUNG ---
 st.markdown("""
 <style>
+    /* Bóp chiều rộng tổng thể về chuẩn kích thước Flashcard UI */
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
-        max-width: 900px;
+        max-width: 680px !important;
     }
     
     .app-title {
@@ -20,13 +21,14 @@ st.markdown("""
         color: #1E293B;
         letter-spacing: -0.5px;
         margin-bottom: 0.5rem;
+        text-align: center;
     }
 
     .flashcard-box {
         background-color: #FFFFFF;
-        padding: 36px 20px;
+        padding: 40px 20px;
         border-radius: 16px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
         border: 1px solid #E2E8F0;
         text-align: center;
         margin-bottom: 16px;
@@ -39,25 +41,33 @@ st.markdown("""
         letter-spacing: 0.8px;
     }
     .card-word {
-        font-size: 2.2rem;
-        font-weight: 700;
+        font-size: 2.4rem;
+        font-weight: 800;
         color: #0F172A;
         margin-top: 8px;
     }
 
-    .meaning-text {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #1E293B;
-        margin-bottom: 4px;
+    /* Khối ví dụ lấp đầy card */
+    .example-block {
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 14px;
+        text-align: left;
     }
-    .example-text {
-        font-size: 0.95rem;
-        color: #475569;
-        font-style: italic;
-        margin-top: 12px;
-        padding-top: 10px;
-        border-top: 1px dashed #E2E8F0;
+    .example-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94A3B8;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+    }
+    .example-content {
+        font-size: 1.15rem;
+        color: #334155;
+        line-height: 1.5;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -75,7 +85,6 @@ if "study_mode" not in st.session_state:
     st.session_state.study_mode = "collocation"
 
 # --- 1. CHỌN KHO TỪ VỰNG ---
-st.write("**Chọn kho từ vựng bạn muốn học:**")
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
@@ -90,7 +99,7 @@ with col_btn2:
         st.session_state.study_mode = "vocab"
         st.rerun()
 
-st.divider()
+st.write("")
 
 # --- 2. XÁC ĐỊNH FILE DỮ LIỆU CÁ NHÂN ---
 if st.session_state.study_mode == "vocab":
@@ -104,7 +113,7 @@ data = load_data(data_file)
 all_words = list(data.keys())
 
 if not all_words:
-    st.info(f"Kho **{mode_title}** của bạn hiện đang trống! Hãy sang mục **Add Word** hoặc **Library** để thêm từ nhé.")
+    st.info(f"Kho **{mode_title}** của bạn hiện đang trống! Hãy sang mục Add Word hoặc Library để thêm từ nhé.")
     st.stop()
 
 # --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
@@ -134,7 +143,7 @@ studied_count = len([w for w in all_words if w in st.session_state.studied_words
 
 progress = studied_count / total_words if total_words > 0 else 0
 st.progress(progress)
-st.caption(f"Tiến độ kho ({mode_title}): **{studied_count} / {total_words}** từ")
+st.caption(f"Tiến độ kho: **{studied_count} / {total_words}** từ")
 
 st.markdown(f"""
     <div class="flashcard-box">
@@ -143,7 +152,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 5. SHOW MEANING & EXAMPLE ---
+# --- 5. SHOW MEANING & EXAMPLE (THIẾT KẾ ĐẦY ĐẶN BẢO BỌC) ---
 with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     word_info = data[current_word]
     if isinstance(word_info, dict):
@@ -151,32 +160,37 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Bố cục 2 cột: Bên trái là Nghĩa to rõ, bên phải là Tag Loại từ
-        col_m, col_p = st.columns([4, 1])
-        with col_m:
-            st.markdown(f'<div style="font-size: 1.6rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">{meaning}</div>', unsafe_allow_html=True)
-        with col_p:
-            pos_short = pos_tag.split(" ")[0].lower()
-            badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
-            st.markdown(f'<div style="text-align: right;"><span class="pos-badge {badge_class}">{pos_tag}</span></div>', unsafe_allow_html=True)
+        # Hàng 1: Nghĩa to & Tag loại từ nằm sát nhau
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 1.5rem; font-weight: 700; color: #0F172A;">{meaning}</span>
+            <span class="pos-badge badge-other" style="padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background-color: #F1F5F9; color: #475569;">{pos_tag}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Hiển thị ví dụ to, rõ ràng và tự động bôi đậm chuẩn Markdown
+        # Hàng 2: Khối câu ví dụ nổi bật ôm trọn nội dung
         if example_text:
-            st.write("---")
             clean_ex = example_text.strip()
-            # Tự động bôi đậm từ vựng nếu câu ví dụ cũ chưa có **
-            if current_word.lower() in clean_ex.lower() and f"**{current_word.lower()}**" not in clean_ex.lower():
-                pattern = re.compile(re.escape(current_word), re.IGNORECASE)
-                clean_ex = pattern.sub(lambda m: f"**{m.group(0)}**", clean_ex)
             
-            # Hiển thị câu ví dụ với font 1.1rem vừa vặn mắt
-            st.markdown(f'*" {clean_ex} "*', unsafe_allow_html=False)
+            # Tự động chuyển Markdown **word** sang thẻ <b>word</b> để rendered mượt trong HTML
+            if current_word.lower() in clean_ex.lower() and "<b>" not in clean_ex.lower():
+                pattern = re.compile(re.escape(current_word), re.IGNORECASE)
+                clean_ex = pattern.sub(lambda m: f"<b>{m.group(0)}</b>", clean_ex)
+            else:
+                clean_ex = clean_ex.replace("**", "<b>", 1).replace("**", "</b>", 1)
+
+            st.markdown(f"""
+            <div class="example-block">
+                <div class="example-title">Example</div>
+                <div class="example-content">"{clean_ex}"</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     else:
         meaning = str(word_info)
-        st.markdown(f'<div style="font-size: 1.5rem; font-weight: 700; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size: 1.4rem; font-weight: 700; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
 
-# --- 6. NÚT ĐÁNH GIÁ (CHỈ DÙNG 2 CỘT CHO CORRECT & WRONG) ---
+# --- 6. NÚT ĐÁNH GIÁ ---
 st.write("")
 col1, col2 = st.columns(2)
 
