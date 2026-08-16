@@ -5,10 +5,10 @@ from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Study | Vocabulary Trainer", page_icon="📖", layout="wide")
 
-# --- CUSTOM CSS: BÓP HẸP KHUNG CHO VỪA MẮT & NỔI BẬT KHỐI NỘI DUNG ---
+# --- CUSTOM CSS: FLASHCARD BÓP GỌN & SIDEBAR PHÓNG TO ---
 st.markdown("""
 <style>
-    /* Bóp chiều rộng tổng thể về chuẩn kích thước Flashcard UI */
+    /* Bóp chiều rộng khung chính vừa vặn với thẻ Flashcard */
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
@@ -47,27 +47,19 @@ st.markdown("""
         margin-top: 8px;
     }
 
-    /* Khối ví dụ lấp đầy card */
-    .example-block {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 16px;
-        margin-top: 14px;
-        text-align: left;
+    /* --- PHÓNG TO MENU SIDEBAR BÊN TRÁI --- */
+    [data-testid="stSidebarNav"] span {
+        font-size: 1.15rem !important; /* Tăng cỡ chữ menu */
+        font-weight: 600 !important;   /* Làm chữ đậm, rõ nét hơn */
     }
-    .example-title {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #94A3B8;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-        letter-spacing: 0.5px;
+    
+    [data-testid="stSidebarNav"] a {
+        padding: 8px 12px !important;  /* Nới rộng khoảng cách giữa các mục */
     }
-    .example-content {
-        font-size: 1.15rem;
-        color: #334155;
-        line-height: 1.5;
+
+    [data-testid="stSidebar"] .stMarkdown p {
+        font-size: 1.1rem !important;  /* Phóng to tiêu đề nhỏ trên Sidebar */
+        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -160,15 +152,15 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Nghĩa tiếng Việt & Tag Loại từ đều được phóng to ấn tượng
+        # Nghĩa tiếng Việt & Tag Loại từ phóng to nổi bật
         st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px;">
             <span style="font-size: 2.2rem; font-weight: 800; color: #0F172A; line-height: 1.2;">{meaning}</span>
-            <span class="pos-badge badge-other" style="padding: 6px 14px; border-radius: 8px; font-size: 1.05rem; font-weight: 700; background-color: #F1F5F9; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">{pos_tag}</span>
+            <span style="padding: 6px 14px; border-radius: 8px; font-size: 1.05rem; font-weight: 700; background-color: #F1F5F9; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">{pos_tag}</span>
         </div>
         """, unsafe_allow_html=True)
 
-        # Ví dụ phóng to, bôi đậm chuẩn từ vựng
+        # Ví dụ phóng to, bôi đậm từ vựng chuẩn mực
         if example_text:
             clean_ex = example_text.strip()
             
@@ -189,6 +181,7 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
     else:
         meaning = str(word_info)
         st.markdown(f'<div style="font-size: 2.2rem; font-weight: 800; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
+
 # --- 6. NÚT ĐÁNH GIÁ ---
 st.write("")
 col1, col2 = st.columns(2)
