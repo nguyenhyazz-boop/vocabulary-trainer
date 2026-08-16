@@ -1,55 +1,15 @@
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Search & Edit - Vocabulary Trainer", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Search & Edit | Vocabulary Trainer", page_icon="🔍", layout="wide")
 
-st.title("🔍 Tìm kiếm & Quản lý từ vựng cá nhân")
-st.caption("Tra cứu từ vựng cá nhân, chỉnh sửa nghĩa hoặc xóa từ không cần thiết.")
-
-# Kiểm tra trạng thái đăng nhập
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
-    st.stop()
-
-username = st.session_state.username
-
-colloc_file = f"data_collocation_{username}.json"
-vocab_file = f"data_vocab_{username}.json"
-
-colloc_data = load_data(colloc_file)
-vocab_data = load_data(vocab_file)
-
-# Gộp bộ từ vựng cá nhân của người dùng
-user_data = {**colloc_data, **vocab_data}
-
-if not user_data:
-    st.info("Bộ từ vựng cá nhân của bạn hiện đang trống. Hãy thêm từ mới hoặc chọn từ trong Library!")
-    st.stop()
-
-# --- Ô TÌM KIẾM THỜI GIAN THỰC ---
-search_query = st.text_input("🔎 Nhập từ vựng hoặc nghĩa cần tìm:", "").strip().lower()
-
-if search_query:
-    filtered_words = {
-        w: item for w, item in user_data.items()
-        if search_query in w.lower() or (isinstance(item, dict) and search_query in item.get("meaning", "").lower())
-    }
-else:
-    filtered_words = user_data
-
-st.write(f"Tìm thấy **{len(filtered_words)}** từ trong bộ sưu tập của bạn:")
-st.divider()
-import streamlit as st
-from utils.data_manager import load_data, save_data
-
-st.set_page_config(page_title="Library | Vocabulary Trainer", page_icon="📚", layout="wide")
-
-# --- CUSTOM CSS: BỘ BỘ LƯỚI THẺ TỪ VỰNG CHUẨN MODERN UI ---
+# --- CUSTOM CSS: MODERN SAAS SEARCH & CARD STYLING ---
 st.markdown("""
 <style>
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
+        max-width: 1050px;
     }
     
     /* Header & Subtitle */
@@ -58,11 +18,23 @@ st.markdown("""
         font-weight: 700 !important;
         color: #1E293B;
         letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     .app-subtitle {
         color: #64748B;
         font-size: 0.95rem;
         margin-bottom: 1.5rem;
+    }
+
+    /* SVG Icon Inline Base */
+    .svg-icon {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        vertical-align: -3px;
+        fill: currentColor;
     }
 
     /* Vocab Card styling */
@@ -71,23 +43,22 @@ st.markdown("""
         border: 1px solid #E2E8F0;
         border-radius: 14px;
         padding: 18px 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        margin-bottom: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
         transition: all 0.2s ease-in-out;
-        height: 100%;
     }
     .vocab-card:hover {
         border-color: #CBD5E1;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
         transform: translateY(-2px);
     }
     .vocab-word {
-        font-size: 1.25rem;
+        font-size: 1.2rem;
         font-weight: 700;
         color: #0F172A;
     }
     .vocab-meaning {
-        font-size: 1rem;
+        font-size: 0.95rem;
         color: #334155;
         font-weight: 500;
         margin-top: 6px;
@@ -104,11 +75,12 @@ st.markdown("""
     /* Badges */
     .pos-badge {
         display: inline-block;
-        padding: 3px 8px;
+        padding: 2px 8px;
         border-radius: 6px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
     }
     .badge-noun { background-color: #E0F2FE; color: #0369A1; }
     .badge-verb { background-color: #DCFCE7; color: #15803D; }
@@ -117,25 +89,34 @@ st.markdown("""
     .badge-phrase { background-color: #FFEDD5; color: #C2410C; }
     .badge-other { background-color: #F1F5F9; color: #475569; }
 
-    .stats-tag {
-        font-size: 0.75rem;
-        color: #94A3B8;
-        margin-top: 10px;
+    /* Thống kê tỷ lệ nhớ */
+    .stats-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: #64748B;
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px dashed #F1F5F9;
     }
 </style>
 """, unsafe_allow_html=True)
 
+# --- SVG ICONS ---
+ICON_SEARCH = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 2a8 8 0 0 1 6.32 12.906l4.387 4.387a1 1 0 0 1-1.414 1.414l-4.387-4.387A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>'
+
 # --- HEADER ---
-st.markdown("""
+st.markdown(f"""
 <div>
-    <div class="app-title">Vocabulary Library</div>
-    <div class="app-subtitle">Quản lý, tra cứu và theo dõi tiến độ ghi nhớ toàn bộ từ vựng cá nhân</div>
+    <div class="app-title">{ICON_SEARCH} Search & Edit</div>
+    <div class="app-subtitle">Tra cứu từ vựng cá nhân, chỉnh sửa nghĩa hoặc quản lý kho từ vựng</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
@@ -181,9 +162,7 @@ for word, info in combined_data.items():
     meaning = info.get("meaning", "").lower()
     pos = info.get("pos", "Other")
 
-    # Kiểm tra khớp từ khóa
     match_query = search_query in word or search_query in meaning
-    # Kiểm tra khớp loại từ
     match_pos = (filter_pos == "Tất cả") or (filter_pos.lower() == pos.lower())
 
     if match_query and match_pos:
@@ -197,7 +176,6 @@ else:
     # --- HIỂN THỊ DẠNG GRID (LƯỚI 3 CỘT) ---
     items = list(filtered_words.items())
     
-    # Chia lưới 3 cột
     cols_per_row = 3
     for i in range(0, len(items), cols_per_row):
         cols = st.columns(cols_per_row)
@@ -215,8 +193,9 @@ else:
                 badge_class = f"badge-{pos_key}" if pos_key in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
 
                 with cols[j]:
-                    # Vẽ Card
                     ex_html = f'<div class="vocab-example">"{example}"</div>' if example else ""
+                    
+                    # SỬA DỨT ĐIỂM TẠI ĐÂY: Render HTML sạch sẽ không bị đè lỗi
                     st.markdown(f"""
                     <div class="vocab-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -225,13 +204,17 @@ else:
                         </div>
                         <div class="vocab-meaning">{meaning}</div>
                         {ex_html}
-                        <div class="stats-tag">🎯 Đúng: {correct} | ❌ Sai: {wrong}</div>
+                        <div class="stats-container">
+                            <span>Đúng: <b>{correct}</b></span>
+                            <span>|</span>
+                            <span>Sai: <b>{wrong}</b></span>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Nút thao tác nhỏ gọn bên dưới card
-                    with st.popover("⚙️ Thao tác"):
-                        if st.button("🗑️ Xóa từ này", key=f"del_{word}", use_container_width=True):
+                    # Popover thao tác tối giản
+                    with st.popover("Thao tác"):
+                        if st.button("Xóa từ này", key=f"del_{word}", use_container_width=True, type="secondary"):
                             target_file = info["repo"]
                             repo_dict = vocab_data if target_file == vocab_file else colloc_data
                             if word in repo_dict:
