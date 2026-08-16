@@ -152,8 +152,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 5. SHOW MEANING & EXAMPLE (THIẾT KẾ ĐẦY ĐẶN BẢO BỌC) ---
-# --- 5. SHOW MEANING & EXAMPLE (TO RÕ NỔI BẬT) ---
+# --- 5. SHOW MEANING & EXAMPLE (TO RÕ CÂN BẰNG) ---
 with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     word_info = data[current_word]
     if isinstance(word_info, dict):
@@ -161,19 +160,18 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Nghĩa tiếng Việt siêu to rực rỡ + Tag Loại từ
+        # Nghĩa tiếng Việt & Tag Loại từ đều được phóng to ấn tượng
         st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px;">
             <span style="font-size: 2.2rem; font-weight: 800; color: #0F172A; line-height: 1.2;">{meaning}</span>
-            <span class="pos-badge badge-other" style="padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; background-color: #F1F5F9; color: #475569;">{pos_tag}</span>
+            <span class="pos-badge badge-other" style="padding: 6px 14px; border-radius: 8px; font-size: 1.05rem; font-weight: 700; background-color: #F1F5F9; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">{pos_tag}</span>
         </div>
         """, unsafe_allow_html=True)
 
-        # Ví dụ phóng to, bỏ ô nền xám, in đậm chuẩn từ vựng
+        # Ví dụ phóng to, bôi đậm chuẩn từ vựng
         if example_text:
             clean_ex = example_text.strip()
             
-            # Xử lý bôi đậm từ vựng sạch sẽ không bị lòi dấu **
             if current_word.lower() in clean_ex.lower() and "<b>" not in clean_ex.lower():
                 pattern = re.compile(re.escape(current_word), re.IGNORECASE)
                 clean_ex = pattern.sub(lambda m: f"<b>{m.group(0)}</b>", clean_ex)
