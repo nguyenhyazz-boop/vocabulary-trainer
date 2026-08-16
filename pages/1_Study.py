@@ -148,33 +148,33 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
     word_info = data[current_word]
     if isinstance(word_info, dict):
         meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
-        pos_tag = word_info.get("pos", "")
-        topic_tag = word_info.get("topic", "")
+        pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        st.markdown(f'<div class="meaning-text">{meaning}</div>', unsafe_allow_html=True)
-        
-        info_list = []
-        if pos_tag:
-            info_list.append(f"Loại từ: **{pos_tag}**")
-        if topic_tag:
-            info_list.append(f"Chủ đề: **{topic_tag}**")
-            
-        if info_list:
-            st.caption(" ┆ ".join(info_list))
+        # Bố cục 2 cột: Bên trái là Nghĩa to rõ, bên phải là Tag Loại từ
+        col_m, col_p = st.columns([4, 1])
+        with col_m:
+            st.markdown(f'<div style="font-size: 1.6rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">{meaning}</div>', unsafe_allow_html=True)
+        with col_p:
+            pos_short = pos_tag.split(" ")[0].lower()
+            badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
+            st.markdown(f'<div style="text-align: right;"><span class="pos-badge {badge_class}">{pos_tag}</span></div>', unsafe_allow_html=True)
 
-        # Hiển thị ví dụ (Tự động bôi đậm từ vựng nếu câu ví dụ cũ chưa bôi đậm)
+        # Hiển thị ví dụ to, rõ ràng và tự động bôi đậm chuẩn Markdown
         if example_text:
+            st.write("---")
             clean_ex = example_text.strip()
+            # Tự động bôi đậm từ vựng nếu câu ví dụ cũ chưa có **
             if current_word.lower() in clean_ex.lower() and f"**{current_word.lower()}**" not in clean_ex.lower():
                 pattern = re.compile(re.escape(current_word), re.IGNORECASE)
                 clean_ex = pattern.sub(lambda m: f"**{m.group(0)}**", clean_ex)
             
-            st.markdown(f'<div class="example-text">"{clean_ex}"</div>', unsafe_allow_html=True)
+            # Hiển thị câu ví dụ với font 1.1rem vừa vặn mắt
+            st.markdown(f'*" {clean_ex} "*', unsafe_allow_html=False)
 
     else:
         meaning = str(word_info)
-        st.markdown(f'<div class="meaning-text">{meaning}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size: 1.5rem; font-weight: 700; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
 
 # --- 6. NÚT ĐÁNH GIÁ (CHỈ DÙNG 2 CỘT CHO CORRECT & WRONG) ---
 st.write("")
