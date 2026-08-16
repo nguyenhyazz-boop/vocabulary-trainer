@@ -1,40 +1,72 @@
+import re
 import random
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
-st.set_page_config(page_title="Study - Vocabulary Trainer", page_icon="📖", layout="wide")
+st.set_page_config(page_title="Study | Vocabulary Trainer", page_icon="📖", layout="wide")
 
+# --- CUSTOM CSS: MINIMALIST SAAS STYLING ---
 st.markdown("""
-    <style>
+<style>
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 900px;
+    }
+    
+    .app-title {
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #1E293B;
+        letter-spacing: -0.5px;
+        margin-bottom: 0.5rem;
+    }
+
     .flashcard-box {
         background-color: #FFFFFF;
-        padding: 30px;
-        border-radius: 18px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
-        border: 1px solid #EAE6DF;
+        padding: 36px 20px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+        border: 1px solid #E2E8F0;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     .card-label {
-        font-size: 0.95rem;
-        color: #8C8C8C;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #94A3B8;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.8px;
     }
     .card-word {
         font-size: 2.2rem;
         font-weight: 700;
-        color: #2D3142;
-        margin-top: 10px;
+        color: #0F172A;
+        margin-top: 8px;
     }
-    </style>
+
+    .meaning-text {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1E293B;
+        margin-bottom: 4px;
+    }
+    .example-text {
+        font-size: 0.95rem;
+        color: #475569;
+        font-style: italic;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px dashed #E2E8F0;
+    }
+</style>
 """, unsafe_allow_html=True)
 
-st.title("📖 Study Vocabulary")
+st.markdown('<div class="app-title">Study Vocabulary</div>', unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
@@ -43,18 +75,18 @@ if "study_mode" not in st.session_state:
     st.session_state.study_mode = "collocation"
 
 # --- 1. CHỌN KHO TỪ VỰNG ---
-st.write("📌 **Chọn kho từ vựng bạn muốn học:**")
+st.write("**Chọn kho từ vựng bạn muốn học:**")
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
-    if st.button("🔗 Collocations", type=type_colloc, use_container_width=True, key="study_btn_colloc"):
+    if st.button("Collocations", type=type_colloc, use_container_width=True, key="study_btn_colloc"):
         st.session_state.study_mode = "collocation"
         st.rerun()
 
 with col_btn2:
     type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
-    if st.button("🔤 Normal Vocabulary", type=type_normal, use_container_width=True, key="study_btn_vocab"):
+    if st.button("Normal Vocabulary", type=type_normal, use_container_width=True, key="study_btn_vocab"):
         st.session_state.study_mode = "vocab"
         st.rerun()
 
@@ -63,16 +95,16 @@ st.divider()
 # --- 2. XÁC ĐỊNH FILE DỮ LIỆU CÁ NHÂN ---
 if st.session_state.study_mode == "vocab":
     data_file = f"data_vocab_{username}.json"
-    mode_title = "🔤 Normal Vocabulary"
+    mode_title = "Normal Vocabulary"
 else:
     data_file = f"data_collocation_{username}.json"
-    mode_title = "🔗 Collocations & Phrases"
+    mode_title = "Collocations & Phrases"
 
 data = load_data(data_file)
 all_words = list(data.keys())
 
 if not all_words:
-    st.info(f"Kho **{mode_title}** của bạn hiện đang trống! Hãy sang mục **Library** để chọn thêm từ vào nhé.")
+    st.info(f"Kho **{mode_title}** của bạn hiện đang trống! Hãy sang mục **Add Word** hoặc **Library** để thêm từ nhé.")
     st.stop()
 
 # --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
@@ -83,8 +115,8 @@ remaining_words = [w for w in all_words if w not in st.session_state.studied_wor
 
 if not remaining_words:
     st.balloons()
-    st.success(f"🎉 Bạn đã hoàn thành toàn bộ từ vựng trong kho **{mode_title}**!")
-    if st.button("🔄 Học lại kho này từ đầu", use_container_width=True, key="reset_study_btn"):
+    st.success(f"Bạn đã hoàn thành toàn bộ từ vựng trong kho **{mode_title}**!")
+    if st.button("Học lại kho này từ đầu", use_container_width=True, key="reset_study_btn"):
         st.session_state.studied_words = [w for w in st.session_state.studied_words if w not in all_words]
         st.rerun()
     st.stop()
@@ -111,14 +143,16 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_word}"):
+# --- 5. SHOW MEANING & EXAMPLE ---
+with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     word_info = data[current_word]
     if isinstance(word_info, dict):
         meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
         pos_tag = word_info.get("pos", "")
         topic_tag = word_info.get("topic", "")
+        example_text = word_info.get("example", "")
         
-        st.markdown(f"### 👉 **{meaning}**")
+        st.markdown(f'<div class="meaning-text">{meaning}</div>', unsafe_allow_html=True)
         
         info_list = []
         if pos_tag:
@@ -128,12 +162,22 @@ with st.expander("👀 Show Meaning", expanded=False, key=f"expander_{current_wo
             
         if info_list:
             st.caption(" ┆ ".join(info_list))
+
+        # Hiển thị ví dụ (Tự động bôi đậm từ vựng nếu câu ví dụ cũ chưa bôi đậm)
+        if example_text:
+            clean_ex = example_text.strip()
+            if current_word.lower() in clean_ex.lower() and f"**{current_word.lower()}**" not in clean_ex.lower():
+                pattern = re.compile(re.escape(current_word), re.IGNORECASE)
+                clean_ex = pattern.sub(lambda m: f"**{m.group(0)}**", clean_ex)
+            
+            st.markdown(f'<div class="example-text">"{clean_ex}"</div>', unsafe_allow_html=True)
+
     else:
         meaning = str(word_info)
-        st.markdown(f"### 👉 **{meaning}**")
+        st.markdown(f'<div class="meaning-text">{meaning}</div>', unsafe_allow_html=True)
 
-# --- 5. NÚT ĐÁNH GIÁ (CHỈ DÙNG 2 CỘT CHO CORRECT & WRONG) ---
-st.write("---")
+# --- 6. NÚT ĐÁNH GIÁ (CHỈ DÙNG 2 CỘT CHO CORRECT & WRONG) ---
+st.write("")
 col1, col2 = st.columns(2)
 
 def handle_answer(is_correct):
@@ -153,11 +197,11 @@ def handle_answer(is_correct):
         save_data(data, data_file)
 
 with col1:
-    if st.button("✅ Correct", use_container_width=True, key=f"btn_correct_{current_word}"):
+    if st.button("Correct", use_container_width=True, key=f"btn_correct_{current_word}", type="primary"):
         handle_answer(True)
         st.rerun()
 
 with col2:
-    if st.button("❌ Wrong", use_container_width=True, key=f"btn_wrong_{current_word}"):
+    if st.button("Wrong", use_container_width=True, key=f"btn_wrong_{current_word}", type="secondary"):
         handle_answer(False)
         st.rerun()
