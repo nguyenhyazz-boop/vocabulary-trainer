@@ -1,62 +1,60 @@
+import re
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Add Word | Vocabulary Trainer", page_icon="📝", layout="wide")
 
-# --- CUSTOM CSS: NÂNG CAP GIAO DIỆN CHUẨN MODERN SAAS ---
+# --- CUSTOM CSS: MODERN SAAS STYLING ---
 st.markdown("""
 <style>
-    /* Tổng thể font & padding */
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
         max-width: 1000px;
     }
     
-    /* Header tối giản */
     .app-header {
         margin-bottom: 2rem;
     }
     .app-title {
-        font-size: 2rem !important;
+        font-size: 1.8rem !important;
         font-weight: 700 !important;
         color: #1E293B;
         letter-spacing: -0.5px;
     }
     .app-subtitle {
         color: #64748B;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     /* Thẻ Container xem trước (Live Preview Card) */
     .preview-card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        transition: all 0.2s ease-in-out;
     }
     .preview-card:hover {
         border-color: #CBD5E1;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
     }
     .preview-word {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
         font-weight: 700;
         color: #0F172A;
-        margin-bottom: 4px;
     }
     
-    /* Badge loại từ phong cách Notion */
+    /* Badge loại từ phong cách Minimalist */
     .pos-badge {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 2px 8px;
         border-radius: 6px;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
     }
     .badge-noun { background-color: #E0F2FE; color: #0369A1; }
     .badge-verb { background-color: #DCFCE7; color: #15803D; }
@@ -66,17 +64,17 @@ st.markdown("""
     .badge-other { background-color: #F1F5F9; color: #475569; }
 
     .preview-meaning {
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #334155;
-        margin-top: 12px;
+        margin-top: 8px;
         font-weight: 500;
     }
     .preview-example {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: #64748B;
         font-style: italic;
         margin-top: 8px;
-        padding-left: 10px;
+        padding-left: 8px;
         border-left: 2px solid #CBD5E1;
     }
 </style>
@@ -86,13 +84,13 @@ st.markdown("""
 st.markdown("""
 <div class="app-header">
     <div class="app-title">Add New Word</div>
-    <div class="app-subtitle">Thêm và phân loại từ vựng mới vào bộ sưu tập cá nhân của bạn</div>
+    <div class="app-subtitle">Thêm và phân loại từ vựng mới vào bộ sưu tập cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
@@ -116,13 +114,30 @@ if not isinstance(current_data, dict):
 
 st.write("")
 
+# --- HÀM TỰ ĐỘNG BÔI ĐẬM TỪ VỰNG TRONG CÂU VÍ DỤ ---
+def highlight_word_in_example(word: str, example: str) -> str:
+    if not word or not example:
+        return example
+    
+    clean_w = word.strip()
+    if not clean_w:
+        return example
+
+    # Bỏ qua nếu từ đã được bôi đậm sẵn trước đó
+    if f"**{clean_w.lower()}**" in example.lower():
+        return example
+
+    # Dùng Regex để tự động bọc **từ_vựng** (giữ nguyên hoa/thường theo câu gốc)
+    pattern = re.compile(re.escape(clean_w), re.IGNORECASE)
+    return pattern.sub(lambda m: f"**{m.group(0)}**", example)
+
 # --- CHIA 2 CỘT: CỘT NHẬP FORM & CỘT LIVE PREVIEW ---
 col_form, col_preview = st.columns([3, 2], gap="large")
 
 with col_form:
     st.subheader("Thông tin từ vựng")
     
-    new_word = st.text_input("Từ / Cụm từ Tiếng Anh", placeholder="e.g. permanent, take action").strip()
+    new_word = st.text_input("Từ / Cụm từ Tiếng Anh", placeholder="e.g. account, take action").strip()
     
     col_pos, col_repo = st.columns(2)
     with col_pos:
@@ -139,8 +154,8 @@ with col_form:
             ]
         )
     
-    new_meaning = st.text_input("Nghĩa Tiếng Việt", placeholder="e.g. vĩnh viễn, lâu dài").strip()
-    example_sentence = st.text_area("Câu ví dụ (Không bắt buộc)", placeholder="e.g. They are looking for a permanent solution.", height=80).strip()
+    new_meaning = st.text_input("Nghĩa Tiếng Việt", placeholder="e.g. câu chuyện, bản báo cáo").strip()
+    example_sentence = st.text_area("Câu ví dụ (Tự động in đậm từ vựng)", placeholder="e.g. She gave a detailed account of the event.", height=80).strip()
 
     st.write("")
     submitted = st.button("Lưu Từ Vựng", type="primary", use_container_width=True)
@@ -149,42 +164,53 @@ with col_form:
 with col_preview:
     st.subheader("Xem trước thẻ từ")
     
-    # Xác định class badge màu sắc
     pos_short = word_pos.split(" ")[0].lower()
     badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
     
     display_word = new_word if new_word else "Word Preview"
     display_meaning = new_meaning if new_meaning else "Nghĩa của từ sẽ hiển thị ở đây..."
-    display_example = example_sentence if example_sentence else "Câu ví dụ minh họa sẽ hiển thị ở đây..."
+    
+    # Tự động bôi đậm trực tiếp trên Live Preview thời gian thực
+    if example_sentence and new_word:
+        auto_highlighted_preview = highlight_word_in_example(new_word, example_sentence)
+        # Chuyển đổi Markdown **word** sang thẻ <b>word</b> để hiển thị trong HTML Card
+        preview_html_example = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', auto_highlighted_preview)
+        display_example = f'"{preview_html_example}"'
+    elif example_sentence:
+        display_example = f'"{example_sentence}"'
+    else:
+        display_example = '"Câu ví dụ minh họa sẽ hiển thị ở đây..."'
 
-    # Render HTML Card
     st.markdown(f"""
     <div class="preview-card">
-        <div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
             <span class="preview-word">{display_word}</span>
-            <span class="pos-badge {badge_class}" style="margin-left: 8px;">{word_pos.split(' ')[0]}</span>
+            <span class="pos-badge {badge_class}">{word_pos.split(' ')[0]}</span>
         </div>
         <div class="preview-meaning">{display_meaning}</div>
-        <div class="preview-example">"{display_example}"</div>
+        <div class="preview-example">{display_example}</div>
     </div>
     """, unsafe_allow_html=True)
 
 # --- XỬ LÝ LƯU DỮ LIỆU ---
 if submitted:
     if not new_word or not new_meaning:
-        st.error("❌ Vui lòng nhập đầy đủ Từ tiếng Anh và Nghĩa tiếng Việt!")
+        st.error("Vui lòng nhập đầy đủ Từ tiếng Anh và Nghĩa tiếng Việt!")
     else:
         word_key = new_word.lower()
         pos_code = word_pos.split(" ")[0]
 
+        # Tự động xử lý bôi đậm trước khi lưu vào JSON
+        final_example = highlight_word_in_example(new_word, example_sentence)
+
         current_data[word_key] = {
             "meaning": new_meaning,
             "pos": pos_code,
-            "example": example_sentence,
+            "example": final_example,
             "correct": current_data.get(word_key, {}).get("correct", 0),
             "wrong": current_data.get(word_key, {}).get("wrong", 0)
         }
 
         save_data(current_data, file_name)
-        st.success(f"🎉 Đã thêm thành công **{new_word}** vào bộ sưu tập!")
+        st.success(f"Đã thêm thành công '{new_word}' vào bộ sưu tập!")
         st.balloons()
