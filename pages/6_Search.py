@@ -3,7 +3,7 @@ from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Search & Edit | Vocabulary Trainer", page_icon="🔍", layout="wide")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS: ORGANIC & CHILL SAAS STYLING ---
 st.markdown("""
 <style>
     .main .block-container {
@@ -12,8 +12,9 @@ st.markdown("""
         max-width: 1050px;
     }
     
+    /* Header & Subtitle */
     .app-title {
-        font-size: 2rem !important;
+        font-size: 1.8rem !important;
         font-weight: 700 !important;
         color: #1E293B;
         letter-spacing: -0.5px;
@@ -23,19 +24,20 @@ st.markdown("""
     }
     .app-subtitle {
         color: #64748B;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         margin-bottom: 1.5rem;
     }
 
+    /* SVG Icon Inline Base */
     .svg-icon {
         display: inline-block;
-        width: 18px;
-        height: 18px;
-        vertical-align: -3px;
+        width: 16px;
+        height: 16px;
+        vertical-align: -2px;
         fill: currentColor;
     }
 
-    /* Badges */
+    /* Badges Tinh Tế */
     .pos-badge {
         display: inline-block;
         padding: 2px 8px;
@@ -45,22 +47,40 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.3px;
     }
-    .badge-noun { background-color: #E0F2FE; color: #0369A1; }
-    .badge-verb { background-color: #DCFCE7; color: #15803D; }
-    .badge-adj { background-color: #FEF9C3; color: #A16207; }
-    .badge-adv { background-color: #F3E8FF; color: #7E22CE; }
-    .badge-phrase { background-color: #FFEDD5; color: #C2410C; }
+    .badge-noun { background-color: #F1F5F9; color: #475569; }
+    .badge-verb { background-color: #F1F5F9; color: #475569; }
+    .badge-adj { background-color: #F1F5F9; color: #475569; }
+    .badge-adv { background-color: #F1F5F9; color: #475569; }
+    .badge-phrase { background-color: #F1F5F9; color: #475569; }
     .badge-other { background-color: #F1F5F9; color: #475569; }
+
+    /* Stats Line Chill */
+    .stats-line {
+        font-size: 0.8rem;
+        color: #94A3B8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .dot-separator {
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        background-color: #CBD5E1;
+        border-radius: 50%;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# --- SVG ICONS TỐI GIẢN ---
 ICON_SEARCH = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10 2a8 8 0 0 1 6.32 12.906l4.387 4.387a1 1 0 0 1-1.414 1.414l-4.387-4.387A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>'
 
 # --- HEADER ---
 st.markdown(f"""
 <div>
     <div class="app-title">{ICON_SEARCH} Search & Edit</div>
-    <div class="app-subtitle">Tra cứu từ vựng cá nhân, chỉnh sửa nghĩa hoặc quản lý kho từ vựng</div>
+    <div class="app-subtitle">Tra cứu từ vựng cá nhân và quản lý kho dữ liệu</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -85,7 +105,7 @@ if not isinstance(colloc_data, dict): colloc_data = {}
 col_search, col_filter, col_repo = st.columns([3, 1.5, 1.5])
 
 with col_search:
-    search_query = st.text_input("Tìm kiếm từ vựng hoặc nghĩa...", placeholder="Type to search...").strip().lower()
+    search_query = st.text_input("Tìm kiếm từ vựng hoặc nghĩa...", placeholder="Nhập từ cần tìm...").strip().lower()
 
 with col_filter:
     filter_pos = st.selectbox("Loại từ", ["Tất cả", "Noun", "Verb", "Adj", "Adv", "Phrase", "Other"])
@@ -141,24 +161,29 @@ else:
                 badge_class = f"badge-{pos_key}" if pos_key in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
 
                 with cols[j]:
-                    # Bọc cả card trong st.container(border=True) chuẩn Streamlit Native - Không sợ lỗi mã hóa HTML!
                     with st.container(border=True):
-                        # Header Từ vựng & Tag Loại từ
+                        # Header Từ vựng & Tag Loại từ tối giản
                         st.markdown(f"""
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 1.2rem; font-weight: 700; color: #0F172A;">{word}</span>
+                            <span style="font-size: 1.15rem; font-weight: 700; color: #0F172A;">{word}</span>
                             <span class="pos-badge {badge_class}">{pos}</span>
                         </div>
-                        <div style="font-size: 0.95rem; color: #334155; font-weight: 500; margin-top: 4px;">{meaning}</div>
+                        <div style="font-size: 0.95rem; color: #475569; font-weight: 500; margin-top: 4px;">{meaning}</div>
                         """, unsafe_allow_html=True)
 
                         if example:
                             st.caption(f'"{example}"')
 
-                        # Chỉ số Đúng / Sai dạng Native cực kỳ sạch sẽ
-                        st.caption(f"🎯 Đúng: **{correct}** | ❌ Sai: **{wrong}**")
+                        # Thống kê Đúng/Sai kiểu Minimalist Chill
+                        st.markdown(f"""
+                        <div class="stats-line">
+                            <span>Đúng {correct}</span>
+                            <span class="dot-separator"></span>
+                            <span>Sai {wrong}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                        # Nút Thao tác
+                        # Popover Thao tác gọn gàng
                         with st.popover("Thao tác", use_container_width=True):
                             if st.button("Xóa từ này", key=f"del_{word}", use_container_width=True):
                                 target_file = info["repo"]
