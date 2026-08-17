@@ -2,3 +2,4 @@ streamlit
 pandas
 bcrypt
 google-generativeai
+supabase
