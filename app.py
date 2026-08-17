@@ -86,7 +86,7 @@ if authenticate_user(login_username, login_password):
 else:
     st.error("Tên đăng nhập hoặc mật khẩu không chính xác!")
     # TAB 2: ĐĂNG KÝ
- from utils.data_manager import register_user, authenticate_user
+
 
 # Logic Đăng ký:
 success, msg = register_user(reg_username, reg_password)
