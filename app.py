@@ -77,20 +77,14 @@ else:
     tab_login, tab_register = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký tài khoản"])
 
     # TAB 1: ĐĂNG NHẬP
-    with tab_login:
-        st.subheader("Đăng nhập")
-        login_user = st.text_input("Tên đăng nhập", key="login_user")
-        login_pass = st.text_input("Mật khẩu", type="password", key="login_pass")
-
-        if st.button("Đăng nhập", type="primary", use_container_width=True):
-            if login_user in users_data and users_data[login_user] == login_pass:
-                st.session_state.logged_in = True
-                st.session_state.username = login_user
-                st.success("Đăng nhập thành công!")
-                st.rerun()
-            else:
-                st.error("❌ Tên đăng nhập hoặc mật khẩu không chính xác!")
-
+   # Logic Đăng nhập:
+if authenticate_user(login_username, login_password):
+    st.session_state.logged_in = True
+    st.session_state.username = login_username
+    st.success("Đăng nhập thành công!")
+    st.rerun()
+else:
+    st.error("Tên đăng nhập hoặc mật khẩu không chính xác!")
     # TAB 2: ĐĂNG KÝ
  from utils.data_manager import register_user, authenticate_user
 
