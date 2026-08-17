@@ -88,12 +88,18 @@ else:
     # TAB 2: ĐĂNG KÝ
 
 
-# Logic Đăng ký:
-success, msg = register_user(reg_username, reg_password)
-if success:
-    st.success(msg)
-else:
-    st.error(msg)
+# Khối xử lý Đăng ký
+    if st.button("Đăng ký", use_container_width=True):
+        if not reg_user or not reg_pass:
+            st.warning("Vui lòng điền đầy đủ thông tin!")
+        elif reg_pass != reg_pass_confirm:
+            st.error("Mật khẩu xác nhận không khớp!")
+        else:
+            success, msg = register_user(reg_user, reg_pass)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
                 
                 # Tạo sẵn 2 file dữ liệu trống cho tài khoản mới
                 save_data({}, f"data_collocation_{reg_user}.json")
