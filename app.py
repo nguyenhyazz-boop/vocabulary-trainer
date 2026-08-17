@@ -92,22 +92,14 @@ else:
                 st.error("❌ Tên đăng nhập hoặc mật khẩu không chính xác!")
 
     # TAB 2: ĐĂNG KÝ
-    with tab_register:
-        st.subheader("Đăng ký tài khoản mới")
-        reg_user = st.text_input("Tên đăng nhập mới", key="reg_user")
-        reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_pass")
-        reg_pass_confirm = st.text_input("Xác nhận mật khẩu", type="password", key="reg_pass_confirm")
+ from utils.data_manager import register_user, authenticate_user
 
-        if st.button("Đăng ký", type="primary", use_container_width=True):
-            if not reg_user or not reg_pass:
-                st.warning("⚠️ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!")
-            elif reg_user in users_data:
-                st.error("❌ Tên đăng nhập này đã tồn tại. Vui lòng chọn tên khác!")
-            elif reg_pass != reg_pass_confirm:
-                st.error("❌ Mật khẩu xác nhận không trùng khớp!")
-            else:
-                users_data[reg_user] = reg_pass
-                save_data(users_data, "users.json")
+# Logic Đăng ký:
+success, msg = register_user(reg_username, reg_password)
+if success:
+    st.success(msg)
+else:
+    st.error(msg)
                 
                 # Tạo sẵn 2 file dữ liệu trống cho tài khoản mới
                 save_data({}, f"data_collocation_{reg_user}.json")
