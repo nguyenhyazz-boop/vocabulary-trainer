@@ -1,7 +1,6 @@
 import base64
 import streamlit as st
-from utils.data_manager 
-import load_data, save_data
+from utils.data_manager import load_data, save_data, register_user, authenticate_user
 
 st.set_page_config(page_title="Vocabulary Trainer - Home", page_icon="📖", layout="wide")
 
