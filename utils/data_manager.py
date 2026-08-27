@@ -1,6 +1,5 @@
 import streamlit as st
 from supabase import create_client, Client
-from supabase.lib.client_options import ClientOptions
 
 # Khởi tạo kết nối Supabase
 @st.cache_resource
@@ -9,6 +8,7 @@ def get_supabase_client() -> Client:
     key = st.secrets.get("SUPABASE_KEY", "").strip()
     if not url or not key:
         return None
+    return create_client(url, key)
     
     # Bổ sung options để tránh lỗi DNS/SSL trên Streamlit Cloud
     return create_client(
