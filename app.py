@@ -1,5 +1,4 @@
 import base64
-import random
 import streamlit as st
 from utils.data_manager import load_data, save_data, register_user, authenticate_user
 
@@ -32,59 +31,11 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if st.session_state.logged_in:
-    username = st.session_state.username
-    st.success(f"Xin chào **{username}**! Bạn đã đăng nhập thành công.")
-    
-    # --- BỘ CHỌN CHẾ ĐỘ HỌC TỪ VỰNG ---
-    st.markdown("---")
-    st.subheader("📚 Chế độ học từ vựng")
-    
-    # Selectbox chọn nguồn từ vựng
-    data_source = st.selectbox("Chọn bộ từ vựng:", ["Từ vựng đơn (Vocab)", "Cụm từ & Cụm động từ (Collocation)"])
-    file_type = "vocab" if "Vocab" in data_source else "collocation"
-    
-    # Tải dữ liệu từ Supabase
-    data_dict = load_data(f"data_{file_type}_{username}.json")
-    
-    if not data_dict:
-        st.info("Kho từ vựng này hiện đang trống. Hãy thêm từ vựng mới hoặc nạp dữ liệu vào database!")
-    else:
-        total_available = len(data_dict)
-        st.write(f"Tổng số từ hiện có: **{total_available}** từ")
-        
-        # Chọn số lượng từ muốn học trong phiên
-        batch_size = st.selectbox(
-            "Chọn số lượng từ muốn học lượt này:",
-            [10, 20, 25, 50, "Tất cả"],
-            index=1
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🚀 Bắt đầu học (Ngẫu nhiên)", use_container_width=True, type="primary"):
-                all_items = list(data_dict.items())
-                if batch_size != "Tất cả":
-                    limit = min(int(batch_size), total_available)
-                    selected_items = random.sample(all_items, limit)
-                else:
-                    selected_items = all_items
-                
-                st.session_state.study_queue = selected_items
-                st.session_state.current_index = 0
-                st.success(f"Đã chuẩn bị {len(selected_items)} từ cho lượt học này!")
-                
-        with col2:
-            if st.button("🔄 Đổi bộ từ mới", use_container_width=True):
-                st.rerun()
-
-    st.markdown("---")
+    st.success(f"Xin chào **{st.session_state.username}**! Bạn đã đăng nhập thành công.")
     if st.button("Đăng xuất", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
-        if "study_queue" in st.session_state:
-            del st.session_state.study_queue
         st.rerun()
-
 else:
     tab_login, tab_register = st.tabs(["🔑 Đăng nhập", "📝 Đăng ký tài khoản"])
 
