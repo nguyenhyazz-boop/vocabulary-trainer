@@ -8,7 +8,6 @@ st.set_page_config(page_title="Study | Vocabulary Trainer", page_icon="📖", la
 # --- CUSTOM CSS: FLASHCARD BÓP GỌN & SIDEBAR PHÓNG TO ---
 st.markdown("""
 <style>
-    /* Bóp chiều rộng khung chính vừa vặn với thẻ Flashcard */
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
@@ -47,16 +46,14 @@ st.markdown("""
         margin-top: 8px;
     }
 
-    /* --- PHÓNG TO MENU SIDEBAR BÊN TRÁI --- */
+    /* PHÓNG TO MENU SIDEBAR */
     [data-testid="stSidebarNav"] span {
         font-size: 1.15rem !important;
         font-weight: 600 !important;
     }
-    
     [data-testid="stSidebarNav"] a {
         padding: 8px 12px !important;
     }
-
     [data-testid="stSidebar"] .stMarkdown p {
         font-size: 1.1rem !important;
         font-weight: 600 !important;
@@ -131,37 +128,53 @@ if "batch_words" not in st.session_state:
             st.session_state.batch_words = all_words.copy()
             
         st.session_state.studied_words = []
+        if "current_word" in st.session_state:
+            del st.session_state.current_word
         st.rerun()
     st.stop()
 
 # --- 4. QUẢN LÝ TẬP TỪ ĐÃ HỌC TRONG BATCH ---
+if "studied_words" not in st.session_state:
+    st.session_state.studied_words = []
+
 batch_list = st.session_state.batch_words
 remaining_words = [w for w in batch_list if w not in st.session_state.studied_words]
 
+# Khi hoàn thành hết từ trong lượt
 if not remaining_words:
     st.balloons()
     st.success(f"🎉 Hoàn thành xuất sắc lượt học ({len(batch_list)} từ) trong kho **{mode_title}**!")
     
     col_r1, col_r2, col_r3 = st.columns(3)
-    
     with col_r1:
         if st.button("🔄 Học lại lượt vừa nãy", type="primary", use_container_width=True):
-            st.session_state.studied_words = []  # Reset danh sách đã học để học lại đúng bộ này
+            st.session_state.studied_words = []
+            if "current_word" in st.session_state:
+                del st.session_state.current_word
             st.rerun()
-            
     with col_r2:
         if st.button("🎲 Học lượt mới", use_container_width=True):
-            del st.session_state.batch_words      # Xóa bộ cũ để hệ thống rút bộ mới
-            st.session_state.studied_words = []
-            st.rerun()
-            
-    with col_r3:
-        if st.button("⚙️ Chọn lại số lượng từ", use_container_width=True):
             del st.session_state.batch_words
             st.session_state.studied_words = []
+            if "current_word" in st.session_state:
+                del st.session_state.current_word
             st.rerun()
-            
+    with col_r3:
+        if st.button("⚙️ Chọn lại số từ", use_container_width=True):
+            del st.session_state.batch_words
+            st.session_state.studied_words = []
+            if "current_word" in st.session_state:
+                del st.session_state.current_word
+            st.rerun()
     st.stop()
+
+# Đảm bảo gán current_word an toàn
+if ("current_word" not in st.session_state 
+    or st.session_state.current_word in st.session_state.studied_words
+    or st.session_state.current_word not in remaining_words):
+    st.session_state.current_word = random.choice(remaining_words)
+
+current_word = st.session_state.current_word
 
 # --- 5. HIỂN THỊ TỪ VỰNG (FLASHCARD) & TIẾN ĐỘ ---
 total_in_batch = len(batch_list)
@@ -176,6 +189,8 @@ with col_info1:
 with col_info2:
     if st.button("❌ Đổi lượt học", help="Hủy lượt này để chọn lại số từ"):
         del st.session_state.batch_words
+        if "current_word" in st.session_state:
+            del st.session_state.current_word
         st.rerun()
 
 st.markdown(f"""
@@ -193,7 +208,6 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Nghĩa tiếng Việt & Tag Loại từ phóng to
         st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px;">
             <span style="font-size: 2.2rem; font-weight: 800; color: #0F172A; line-height: 1.2;">{meaning}</span>
@@ -201,10 +215,8 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         </div>
         """, unsafe_allow_html=True)
 
-        # Ví dụ bôi đậm từ vựng
         if example_text:
             clean_ex = example_text.strip()
-            
             if current_word.lower() in clean_ex.lower() and "<b>" not in clean_ex.lower():
                 pattern = re.compile(re.escape(current_word), re.IGNORECASE)
                 clean_ex = pattern.sub(lambda m: f"<b>{m.group(0)}</b>", clean_ex)
@@ -218,7 +230,6 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
     else:
         meaning = str(word_info)
         st.markdown(f'<div style="font-size: 2.2rem; font-weight: 800; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
