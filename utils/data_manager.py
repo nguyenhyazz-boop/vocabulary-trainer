@@ -1,5 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
 
 # Khởi tạo kết nối Supabase
 @st.cache_resource
@@ -8,7 +9,16 @@ def get_supabase_client() -> Client:
     key = st.secrets.get("SUPABASE_KEY", "").strip()
     if not url or not key:
         return None
-    return create_client(url, key)
+    
+    # Bổ sung options để tránh lỗi DNS/SSL trên Streamlit Cloud
+    return create_client(
+        url, 
+        key,
+        options=ClientOptions(
+            post_grest_client_timeout=10,
+            storage_client_timeout=10
+        )
+    )
 
 # --- QUẢN LÝ TÀI KHOẢN (USERS) ---
 def register_user(username, password):
@@ -88,7 +98,7 @@ def load_data(file_name: str):
 def save_data(data, file_name: str):
     supabase = get_supabase_client()
     if not supabase:
-        st.error("Chưa cấu hình Supabase Keys trong Streamlit Secrets!")
+        st.error("Chưa cấu hình Supabase Keys trong Secrets!")
         return False
 
     username, data_type = parse_file_info(file_name)
