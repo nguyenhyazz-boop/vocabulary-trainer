@@ -49,16 +49,16 @@ st.markdown("""
 
     /* --- PHÓNG TO MENU SIDEBAR BÊN TRÁI --- */
     [data-testid="stSidebarNav"] span {
-        font-size: 1.15rem !important; /* Tăng cỡ chữ menu */
-        font-weight: 600 !important;   /* Làm chữ đậm, rõ nét hơn */
+        font-size: 1.15rem !important;
+        font-weight: 600 !important;
     }
     
     [data-testid="stSidebarNav"] a {
-        padding: 8px 12px !important;  /* Nới rộng khoảng cách giữa các mục */
+        padding: 8px 12px !important;
     }
 
     [data-testid="stSidebar"] .stMarkdown p {
-        font-size: 1.1rem !important;  /* Phóng to tiêu đề nhỏ trên Sidebar */
+        font-size: 1.1rem !important;
         font-weight: 600 !important;
     }
 </style>
@@ -83,12 +83,16 @@ with col_btn1:
     type_colloc = "primary" if st.session_state.study_mode == "collocation" else "secondary"
     if st.button("Collocations", type=type_colloc, use_container_width=True, key="study_btn_colloc"):
         st.session_state.study_mode = "collocation"
+        if "batch_words" in st.session_state:
+            del st.session_state.batch_words
         st.rerun()
 
 with col_btn2:
     type_normal = "primary" if st.session_state.study_mode == "vocab" else "secondary"
     if st.button("Normal Vocabulary", type=type_normal, use_container_width=True, key="study_btn_vocab"):
         st.session_state.study_mode = "vocab"
+        if "batch_words" in st.session_state:
+            del st.session_state.batch_words
         st.rerun()
 
 st.write("")
@@ -108,34 +112,68 @@ if not all_words:
     st.info(f"Kho **{mode_title}** của bạn hiện đang trống! Hãy sang mục Add Word hoặc Library để thêm từ nhé.")
     st.stop()
 
-# --- 3. QUẢN LÝ TẬP TỪ ĐÃ HỌC ---
-if "studied_words" not in st.session_state:
-    st.session_state.studied_words = []
+# --- 3. BỘ CHỌN SỐ LƯỢNG TỪ CHO LƯỢT HỌC ---
+if "batch_words" not in st.session_state:
+    st.markdown("### 🎯 Chọn kích thước lượt học")
+    st.caption(f"Kho **{mode_title}** đang có tổng cộng **{len(all_words)}** từ.")
+    
+    batch_size = st.selectbox(
+        "Bạn muốn học bao nhiêu từ trong lượt này?",
+        [10, 20, 25, 50, "Tất cả"],
+        index=1
+    )
+    
+    if st.button("🚀 Bắt đầu lượt học mới", type="primary", use_container_width=True):
+        if batch_size != "Tất cả":
+            limit = min(int(batch_size), len(all_words))
+            st.session_state.batch_words = random.sample(all_words, limit)
+        else:
+            st.session_state.batch_words = all_words.copy()
+            
+        st.session_state.studied_words = []
+        st.rerun()
+    st.stop()
 
-remaining_words = [w for w in all_words if w not in st.session_state.studied_words]
+# --- 4. QUẢN LÝ TẬP TỪ ĐÃ HỌC TRONG BATCH ---
+batch_list = st.session_state.batch_words
+remaining_words = [w for w in batch_list if w not in st.session_state.studied_words]
 
 if not remaining_words:
     st.balloons()
-    st.success(f"Bạn đã hoàn thành toàn bộ từ vựng trong kho **{mode_title}**!")
-    if st.button("Học lại kho này từ đầu", use_container_width=True, key="reset_study_btn"):
-        st.session_state.studied_words = [w for w in st.session_state.studied_words if w not in all_words]
-        st.rerun()
+    st.success(f"🎉 Hoàn thành xuất sắc lượt học ({len(batch_list)} từ) trong kho **{mode_title}**!")
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        if st.button("🔄 Học tiếp lượt khác", type="primary", use_container_width=True):
+            del st.session_state.batch_words
+            st.session_state.studied_words = []
+            st.rerun()
+    with col_r2:
+        if st.button("⚙️ Chọn lại số lượng từ", use_container_width=True):
+            del st.session_state.batch_words
+            st.rerun()
     st.stop()
 
 if ("current_word" not in st.session_state 
     or st.session_state.current_word in st.session_state.studied_words
-    or st.session_state.current_word not in all_words):
+    or st.session_state.current_word not in batch_list):
     st.session_state.current_word = random.choice(remaining_words)
 
 current_word = st.session_state.current_word
 
-# --- 4. HIỂN THỊ TỪ VỰNG (FLASHCARD) ---
-total_words = len(all_words)
-studied_count = len([w for w in all_words if w in st.session_state.studied_words])
+# --- 5. HIỂN THỊ TỪ VỰNG (FLASHCARD) & TIẾN ĐỘ ---
+total_in_batch = len(batch_list)
+studied_count = len(st.session_state.studied_words)
 
-progress = studied_count / total_words if total_words > 0 else 0
+progress = studied_count / total_in_batch if total_in_batch > 0 else 0
 st.progress(progress)
-st.caption(f"Tiến độ kho: **{studied_count} / {total_words}** từ")
+
+col_info1, col_info2 = st.columns([2, 1])
+with col_info1:
+    st.caption(f"Tiến độ lượt này: **{studied_count} / {total_in_batch}** từ")
+with col_info2:
+    if st.button("❌ Đổi lượt học", help="Hủy lượt này để chọn lại số từ"):
+        del st.session_state.batch_words
+        st.rerun()
 
 st.markdown(f"""
     <div class="flashcard-box">
@@ -144,7 +182,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 5. SHOW MEANING & EXAMPLE (TO RÕ CÂN BẰNG) ---
+# --- 6. SHOW MEANING & EXAMPLE ---
 with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     word_info = data[current_word]
     if isinstance(word_info, dict):
@@ -152,7 +190,7 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         pos_tag = word_info.get("pos", "Other")
         example_text = word_info.get("example", "")
         
-        # Nghĩa tiếng Việt & Tag Loại từ phóng to nổi bật
+        # Nghĩa tiếng Việt & Tag Loại từ phóng to
         st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px;">
             <span style="font-size: 2.2rem; font-weight: 800; color: #0F172A; line-height: 1.2;">{meaning}</span>
@@ -160,7 +198,7 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         </div>
         """, unsafe_allow_html=True)
 
-        # Ví dụ phóng to, bôi đậm từ vựng chuẩn mực
+        # Ví dụ bôi đậm từ vựng
         if example_text:
             clean_ex = example_text.strip()
             
@@ -182,7 +220,7 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
         meaning = str(word_info)
         st.markdown(f'<div style="font-size: 2.2rem; font-weight: 800; color: #0F172A;">{meaning}</div>', unsafe_allow_html=True)
 
-# --- 6. NÚT ĐÁNH GIÁ ---
+# --- 7. NÚT ĐÁNH GIÁ ---
 st.write("")
 col1, col2 = st.columns(2)
 
