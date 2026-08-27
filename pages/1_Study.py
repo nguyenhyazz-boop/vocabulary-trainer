@@ -141,24 +141,27 @@ remaining_words = [w for w in batch_list if w not in st.session_state.studied_wo
 if not remaining_words:
     st.balloons()
     st.success(f"🎉 Hoàn thành xuất sắc lượt học ({len(batch_list)} từ) trong kho **{mode_title}**!")
-    col_r1, col_r2 = st.columns(2)
+    
+    col_r1, col_r2, col_r3 = st.columns(3)
+    
     with col_r1:
-        if st.button("🔄 Học tiếp lượt khác", type="primary", use_container_width=True):
+        if st.button("🔄 Học lại lượt vừa nãy", type="primary", use_container_width=True):
+            st.session_state.studied_words = []  # Reset danh sách đã học để học lại đúng bộ này
+            st.rerun()
+            
+    with col_r2:
+        if st.button("🎲 Học lượt mới", use_container_width=True):
+            del st.session_state.batch_words      # Xóa bộ cũ để hệ thống rút bộ mới
+            st.session_state.studied_words = []
+            st.rerun()
+            
+    with col_r3:
+        if st.button("⚙️ Chọn lại số lượng từ", use_container_width=True):
             del st.session_state.batch_words
             st.session_state.studied_words = []
             st.rerun()
-    with col_r2:
-        if st.button("⚙️ Chọn lại số lượng từ", use_container_width=True):
-            del st.session_state.batch_words
-            st.rerun()
+            
     st.stop()
-
-if ("current_word" not in st.session_state 
-    or st.session_state.current_word in st.session_state.studied_words
-    or st.session_state.current_word not in batch_list):
-    st.session_state.current_word = random.choice(remaining_words)
-
-current_word = st.session_state.current_word
 
 # --- 5. HIỂN THỊ TỪ VỰNG (FLASHCARD) & TIẾN ĐỘ ---
 total_in_batch = len(batch_list)
