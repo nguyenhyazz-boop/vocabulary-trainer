@@ -44,13 +44,15 @@ username = st.session_state.username
 vocab_data = load_data(f"data_vocab_{username}.json")
 colloc_data = load_data(f"data_collocation_{username}.json")
 
-if not isinstance(vocab_data, dict): vocab_data = {}
-if not isinstance(colloc_data, dict): colloc_data = {}
+if not isinstance(vocab_data, dict):
+    vocab_data = {}
+if not isinstance(colloc_data, dict):
+    colloc_data = {}
 
 # --- 2. BẢNG THIẾT LẬP MÀN CHƠI ---
 with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expanded=True):
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         source_choice = st.selectbox(
             "Nguồn từ vựng:",
@@ -91,7 +93,7 @@ with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expand
     )
 
     selected_words = []
-  if select_type == "Rút ngẫu nhiên theo số lượng":
+    if select_type == "Rút ngẫu nhiên theo số lượng":
         max_w = min(50, len(all_keys))
         if max_w <= 1:
             num_words = max_w
@@ -302,7 +304,6 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const mobileInput = document.getElementById("mobile-input");
 
-// Web Audio API tạo âm thanh laser & nổ không cần file ngoài
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {{
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -406,7 +407,7 @@ function startGame() {{
   lives = 3;
   correctChars = 0;
   totalChars = 0;
-  spawnTimer = 999; // Spawn ngay lập tức con đầu tiên
+  spawnTimer = 999;
   isRunning = true;
   
   updateHUD();
@@ -460,7 +461,6 @@ function handleKeyInput(char) {{
 
   totalChars++;
 
-  // Nếu chưa khóa mục tiêu, tìm tàu địch gần đáy nhất có chữ cái đầu khớp
   if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
     lockedEnemy = null;
     let candidates = enemies.filter(e => e.enLower[0] === key);
@@ -477,7 +477,6 @@ function handleKeyInput(char) {{
       lockedEnemy.typed++;
       playSound('laser');
 
-      // Bắn tia laser từ phi thuyền tới tàu địch
       const shipX = canvas.width / 2;
       const shipY = canvas.height - 65;
       shipAngle = Math.atan2(lockedEnemy.y - shipY, lockedEnemy.x - shipX);
@@ -487,7 +486,6 @@ function handleKeyInput(char) {{
       const typedPart = lockedEnemy.en.slice(0, lockedEnemy.typed);
       document.getElementById("typing-bar").innerText = typedPart.toUpperCase();
 
-      // Tiêu diệt hoàn toàn tàu địch
       if (lockedEnemy.typed >= lockedEnemy.en.length) {{
         playSound('boom');
         createExplosion(lockedEnemy.x, lockedEnemy.y, "#F59E0B");
@@ -499,7 +497,6 @@ function handleKeyInput(char) {{
         document.getElementById("typing-bar").innerText = "🎯 MỤC TIÊU BỊ HẠ!";
       }}
     }} else {{
-      // Gõ sai chữ tiếp theo của tàu đang khóa
       combo = 0;
       playSound('error');
     }}
@@ -512,7 +509,6 @@ function handleKeyInput(char) {{
 
 window.addEventListener("keydown", (e) => {{
   if (e.key === "Backspace") {{
-    // Hủy khóa mục tiêu nếu muốn đổi sang bắn tàu khác
     lockedEnemy = null;
     document.getElementById("typing-bar").innerText = "Đã hủy khóa mục tiêu";
     return;
@@ -554,7 +550,6 @@ function gameLoop() {{
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Vẽ sao nền chuyển động
   ctx.fillStyle = "#FFFFFF";
   for (let s of stars) {{
     s.y += s.s;
@@ -566,7 +561,6 @@ function gameLoop() {{
   }}
   ctx.globalAlpha = 1.0;
 
-  // Sinh tàu địch mới
   spawnTimer++;
   const maxOnScreen = 4;
   if (spawnTimer > 150 && enemies.length < maxOnScreen && spawnQueue.length > 0) {{
@@ -574,12 +568,10 @@ function gameLoop() {{
     spawnTimer = 0;
   }}
 
-  // Cập nhật & vẽ tàu địch
   for (let i = enemies.length - 1; i >= 0; i--) {{
     let e = enemies[i];
     e.y += e.speed;
 
-    // Tàu chạm đáy màn hình
     if (e.y > canvas.height - 85) {{
       playSound('boom');
       createExplosion(e.x, e.y, "#EF4444");
@@ -598,7 +590,6 @@ function gameLoop() {{
 
     const isLocked = (lockedEnemy === e);
 
-    // Vẽ thân tàu địch
     ctx.save();
     ctx.translate(e.x, e.y);
     ctx.fillStyle = isLocked ? "#F59E0B" : "#EF4444";
@@ -610,7 +601,6 @@ function gameLoop() {{
     ctx.closePath();
     ctx.fill();
 
-    // Khung bảng nghĩa tiếng Việt + gợi ý chữ cái
     const hintText = formatHint(e.en, e.typed);
     ctx.font = "bold 15px 'Segoe UI', sans-serif";
     const viWidth = ctx.measureText(e.vi).width;
@@ -627,20 +617,17 @@ function gameLoop() {{
     ctx.fill();
     ctx.stroke();
 
-    // Text nghĩa tiếng Việt
     ctx.fillStyle = "#F8FAFC";
     ctx.font = "bold 14px 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(e.vi, 0, -43);
 
-    // Text khung từ tiếng Anh
     ctx.fillStyle = isLocked ? "#38BDF8" : "#94A3B8";
     ctx.font = "bold 14px monospace";
     ctx.fillText(hintText, 0, -24);
     ctx.restore();
   }}
 
-  // Vẽ tia laser
   for (let i = lasers.length - 1; i >= 0; i--) {{
     let l = lasers[i];
     ctx.strokeStyle = `rgba(56, 189, 248, ${{l.life}})`;
@@ -653,7 +640,6 @@ function gameLoop() {{
     if (l.life <= 0) lasers.splice(i, 1);
   }}
 
-  // Vẽ hạt nổ
   for (let i = particles.length - 1; i >= 0; i--) {{
     let p = particles[i];
     p.x += p.vx;
@@ -666,7 +652,6 @@ function gameLoop() {{
   }}
   ctx.globalAlpha = 1.0;
 
-  // Vẽ phi thuyền chủ ở đáy màn hình
   const shipX = canvas.width / 2;
   const shipY = canvas.height - 65;
   ctx.save();
@@ -682,7 +667,6 @@ function gameLoop() {{
   ctx.fill();
   ctx.restore();
 
-  // Kiểm tra thắng trận
   if (spawnQueue.length === 0 && enemies.length === 0) {{
     endGame(true);
     return;
