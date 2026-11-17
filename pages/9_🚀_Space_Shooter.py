@@ -7,13 +7,21 @@ from utils.data_manager import load_data
 
 st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="🚀", layout="wide")
 
-# --- KẾT NỐI SUPABASE CHO BẢNG XẾP HẠNG ---
+# --- LẤY THÔNG TIN SUPABASE ---
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+except Exception:
+    pass
+
 @st.cache_resource
 def get_supabase():
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
     try:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
-        return create_client(url, key)
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception:
         return None
 
@@ -27,32 +35,6 @@ def get_leaderboard():
         return res.data or []
     except Exception:
         return []
-
-def submit_high_score(user: str, new_score: int, new_combo: int):
-    if not supabase or new_score <= 0:
-        return False, "Điểm phải lớn hơn 0 để ghi danh!"
-    try:
-        existing = supabase.table("space_leaderboard").select("*").eq("username", user).execute()
-        if existing.data:
-            old_score = existing.data[0].get("high_score", 0)
-            old_combo = existing.data[0].get("max_combo", 0)
-            if new_score > old_score:
-                supabase.table("space_leaderboard").update({
-                    "high_score": new_score,
-                    "max_combo": max(new_combo, old_combo)
-                }).eq("username", user).execute()
-                return True, f"🎉 Phá kỷ lục cá nhân! Đã cập nhật {new_score:,} điểm lên Bảng Xếp Hạng!"
-            else:
-                return False, f"Kỷ lục hiện tại của bạn đang là {old_score:,} điểm (cao hơn lượt này)."
-        else:
-            supabase.table("space_leaderboard").insert({
-                "username": user,
-                "high_score": new_score,
-                "max_combo": new_combo
-            }).execute()
-            return True, f"🚀 Đã ghi danh thành công với {new_score:,} điểm!"
-    except Exception as e:
-        return False, f"Lỗi kết nối bảng xếp hạng: {e}"
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -80,22 +62,22 @@ st.markdown("""
         color: #F8FAFC;
         border-radius: 14px;
         padding: 16px 20px;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
         border: 1px solid #334155;
     }
     .lb-row {
         display: flex;
         justify-content: space-between;
-        padding: 6px 10px;
+        padding: 7px 10px;
         border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-        font-size: 0.92rem;
+        font-size: 0.94rem;
     }
     .lb-row:last-child { border-bottom: none; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="app-title">🚀 Space Vocab Defender</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Đua Top Bảng Xếp Hạng cùng bạn bè!</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Kỷ lục tự động cập nhật lên Bảng Xếp Hạng!</div>', unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -104,11 +86,18 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 username = st.session_state.username
 
-# --- BẢNG XẾP HẠNG TOP 10 ---
+# --- BẢNG XẾP HẠNG TOP 10 (TỰ ĐỘNG ĐỒNG BỘ) ---
 with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded=False):
+    col_lb1, col_lb2 = st.columns([4, 1])
+    with col_lb1:
+        st.caption("Kỷ lục cá nhân cao nhất của bạn sẽ tự động cập nhật ngay khi kết thúc trận đấu.")
+    with col_lb2:
+        if st.button("🔄 Làm mới Top", use_container_width=True):
+            st.rerun()
+
     lb_data = get_leaderboard()
     if not lb_data:
-        st.info("Chưa có ai ghi danh trên Bảng Xếp Hạng. Hãy là người đầu tiên lập kỷ lục!")
+        st.info("Chưa có ai ghi danh trên Bảng Xếp Hạng. Hãy chơi ngay 1 trận để mở bát!")
     else:
         medals = ["🥇", "🥈", "🥉"]
         rows_html = ""
@@ -125,24 +114,6 @@ with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded
             </div>
             """
         st.markdown(f'<div class="lb-card">{rows_html}</div>', unsafe_allow_html=True)
-
-    # Khu vực lưu điểm sau trận đấu
-    st.caption("Vừa hoàn thành trận đấu? Nhập điểm số vừa đạt được để cập nhật kỷ lục:")
-    c_s1, c_s2, c_s3 = st.columns([2, 2, 2])
-    with c_s1:
-        input_score = st.number_input("Điểm vừa đạt:", min_value=0, step=10, value=0)
-    with c_s2:
-        input_combo = st.number_input("Max Combo:", min_value=0, step=1, value=0)
-    with c_s3:
-        st.write("")
-        st.write("")
-        if st.button("🚀 Lưu kỷ lục lên Top", use_container_width=True, type="primary"):
-            ok, msg = submit_high_score(username, int(input_score), int(input_combo))
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.warning(msg)
 
 # --- 1. TẢI DỮ LIỆU TỪ VỰNG CỦA USER ---
 vocab_data = load_data(f"data_vocab_{username}.json")
@@ -242,7 +213,7 @@ base_speed = speed_map[difficulty]
 show_hint = "true" if "Thường" in game_mode else "false"
 words_json = json.dumps(game_words, ensure_ascii=False)
 
-# --- 3. GIAO DIỆN GAME VŨ TRỤ + SHOP TRỢ GIÚP + CHIA SẺ ---
+# --- 3. GIAO DIỆN GAME VŨ TRỤ + TỰ ĐỘNG ĐỒNG BỘ SUPABASE ---
 game_html = f"""
 <!DOCTYPE html>
 <html>
@@ -378,7 +349,17 @@ game_html = f"""
     color: #94A3B8;
     max-width: 520px;
     line-height: 1.5;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
+  }}
+  #sync-status {{
+    font-size: 14px;
+    font-weight: 700;
+    color: #38BDF8;
+    margin-bottom: 14px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
   }}
   .btn-group {{
     display: flex;
@@ -411,9 +392,9 @@ game_html = f"""
   }}
   .btn-share:hover {{ background: #0F172A; }}
   #missed-box {{
-    margin-top: 10px;
+    margin-top: 6px;
     margin-bottom: 16px;
-    max-height: 130px;
+    max-height: 125px;
     overflow-y: auto;
     background: rgba(30, 41, 59, 0.7);
     padding: 10px 18px;
@@ -465,6 +446,7 @@ game_html = f"""
   <div id="end-screen" class="overlay" style="display: none;">
     <h2 id="end-title">HOÀN THÀNH NHIỆM VỤ!</h2>
     <p id="end-stats"></p>
+    <div id="sync-status">⏳ Đang đồng bộ kỷ lục lên Bảng Xếp Hạng...</div>
     <div id="missed-box" style="display: none;"></div>
     <div class="btn-group">
       <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
@@ -480,466 +462,73 @@ const WORD_LIST = {words_json};
 const BASE_SPEED = {base_speed};
 const SHOW_HINT = {show_hint};
 const PLAYER_NAME = "{username}";
+const SB_URL = "{SUPABASE_URL}";
+const SB_KEY = "{SUPABASE_KEY}";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const mobileInput = document.getElementById("mobile-input");
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {{
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  const now = audioCtx.currentTime;
-  if (type === 'laser') {{
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(880, now);
-    osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    osc.start(now);
-    osc.stop(now + 0.08);
-  }} else if (type === 'boom') {{
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(140, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    osc.start(now);
-    osc.stop(now + 0.25);
-  }} else if (type === 'skill') {{
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, now);
-    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.22);
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-    osc.start(now);
-    osc.stop(now + 0.22);
-  }} else if (type === 'error') {{
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.linearRampToValueAtTime(110, now + 0.1);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    osc.start(now);
-    osc.stop(now + 0.1);
+// --- HÀM TỰ ĐỘNG ĐỒNG BỘ KỶ LỤC LÊN SUPABASE ---
+async function autoSaveLeaderboard(finalScore, finalCombo) {{
+  const statusEl = document.getElementById("sync-status");
+  if (!SB_URL || !SB_KEY || finalScore <= 0) {{
+    statusEl.innerText = "ℹ️ Điểm bằng 0 nên chưa ghi danh lên Bảng Xếp Hạng.";
+    return;
   }}
-}}
 
-let stars = [];
-for (let i = 0; i < 90; i++) {{
-  stars.push({{
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    r: Math.random() * 1.8 + 0.4,
-    s: Math.random() * 0.4 + 0.1
-  }});
-}}
+  try {{
+    const headers = {{
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + SB_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    }};
 
-let enemies = [];
-let lasers = [];
-let particles = [];
-let spawnQueue = [];
-let lockedEnemy = null;
-let score = 0;
-let combo = 0;
-let maxCombo = 0;
-let lives = 3;
-let isRunning = false;
-let spawnTimer = 0;
-let shipAngle = -Math.PI / 2;
-let missedWords = [];
-let correctChars = 0;
-let totalChars = 0;
-let freezeFrames = 0;
-let lastShareSummary = "";
-
-function focusInput() {{
-  mobileInput.focus();
-}}
-
-function formatHint(word, typedCount) {{
-  let out = "";
-  for (let i = 0; i < word.length; i++) {{
-    if (i < typedCount) {{
-      out += word[i];
-    }} else if (word[i] === " ") {{
-      out += "   ";
-    }} else if (word[i] === "-") {{
-      out += "-";
-    }} else if (SHOW_HINT && (i === 0 || i === word.length - 1)) {{
-      out += word[i];
-    }} else if (SHOW_HINT) {{
-      out += "_";
-    }} else {{
-      out += "•";
-    }}
-    if (i < word.length - 1) out += " ";
-  }}
-  return out;
-}}
-
-function startGame() {{
-  document.getElementById("start-screen").style.display = "none";
-  document.getElementById("end-screen").style.display = "none";
-  document.getElementById("btn-copy").innerText = "📋 Copy thành tích khoe bạn bè";
-  
-  spawnQueue = [...WORD_LIST].sort(() => Math.random() - 0.5);
-  enemies = [];
-  lasers = [];
-  particles = [];
-  missedWords = [];
-  lockedEnemy = null;
-  score = 0;
-  combo = 0;
-  maxCombo = 0;
-  lives = 3;
-  correctChars = 0;
-  totalChars = 0;
-  freezeFrames = 0;
-  spawnTimer = 999;
-  isRunning = true;
-  
-  updateHUD();
-  document.getElementById("typing-bar").innerText = "Sẵn sàng khai hỏa...";
-  focusInput();
-  requestAnimationFrame(gameLoop);
-}}
-
-function spawnEnemy() {{
-  if (spawnQueue.length === 0) return;
-  const item = spawnQueue.pop();
-  const margin = 120;
-  const x = margin + Math.random() * (canvas.width - margin * 2);
-  enemies.push({{
-    en: item.en,
-    enLower: item.en.toLowerCase(),
-    vi: item.vi,
-    typed: 0,
-    x: x,
-    y: -30,
-    speed: BASE_SPEED + (Math.random() * 0.15)
-  }});
-}}
-
-function createExplosion(x, y, color) {{
-  for (let i = 0; i < 24; i++) {{
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 4 + 1;
-    particles.push({{
-      x: x,
-      y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 1.0,
-      color: color
+    // 1. Kiểm tra kỷ lục cũ của user
+    const checkRes = await fetch(`${{SB_URL}}/rest/v1/space_leaderboard?username=eq.${{encodeURIComponent(PLAYER_NAME)}}&select=*`, {{
+      method: "GET",
+      headers: headers
     }});
-  }}
-}}
+    const existing = await checkRes.json();
 
-function updateHUD() {{
-  document.getElementById("score").innerText = score;
-  document.getElementById("combo").innerText = combo;
-  document.getElementById("remaining").innerText = spawnQueue.length + enemies.length;
-  document.getElementById("lives").innerText = "❤️".repeat(Math.max(0, lives));
+    if (Array.isArray(existing) && existing.length > 0) {{
+      const oldScore = existing[0].high_score || 0;
+      const oldCombo = existing[0].max_combo || 0;
 
-  const btnHint = document.getElementById("btn-hint");
-  const btnFreeze = document.getElementById("btn-freeze");
-  const btnNuke = document.getElementById("btn-nuke");
-
-  btnHint.disabled = score < 50 || enemies.length === 0;
-  btnFreeze.disabled = score < 100 || freezeFrames > 0;
-  btnNuke.disabled = score < 200 || enemies.length === 0;
-
-  btnHint.classList.toggle("ready", !btnHint.disabled);
-  btnFreeze.classList.toggle("ready", !btnFreeze.disabled);
-  btnNuke.classList.toggle("ready", !btnNuke.disabled);
-}}
-
-function useSkill(type) {{
-  if (!isRunning) return;
-  focusInput();
-
-  if (type === 'hint' && score >= 50 && enemies.length > 0) {{
-    score -= 50;
-    playSound('skill');
-    if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
-      let sorted = [...enemies].sort((a, b) => b.y - a.y);
-      lockedEnemy = sorted[0];
-    }}
-    const nextChar = lockedEnemy.enLower[lockedEnemy.typed];
-    handleKeyInput(nextChar, true);
-  }} 
-  else if (type === 'freeze' && score >= 100 && freezeFrames <= 0) {{
-    score -= 100;
-    freezeFrames = 300;
-    playSound('skill');
-    document.getElementById("typing-bar").innerText = "❄️ ĐÓNG BĂNG VŨ TRỤ (5s)!";
-  }} 
-  else if (type === 'nuke' && score >= 200 && enemies.length > 0) {{
-    score -= 200;
-    playSound('boom');
-    for (let e of enemies) {{
-      createExplosion(e.x, e.y, "#A855F7");
-      score += 30;
-    }}
-    enemies = [];
-    lockedEnemy = null;
-    document.getElementById("typing-bar").innerText = "💥 BOM EMP QUÉT SẠCH MÀN HÌNH!";
-  }}
-  updateHUD();
-}}
-
-function handleKeyInput(char, isFromSkill = false) {{
-  if (!isRunning) return;
-
-  if (!isFromSkill) {{
-    if (char === '1') {{ useSkill('hint'); return; }}
-    if (char === '2') {{ useSkill('freeze'); return; }}
-    if (char === '3') {{ useSkill('nuke'); return; }}
-  }}
-
-  const key = char.toLowerCase();
-  if (!/^[a-z\\s\\-']$/.test(key)) return;
-
-  if (!isFromSkill) totalChars++;
-
-  if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
-    lockedEnemy = null;
-    let candidates = enemies.filter(e => e.enLower[0] === key);
-    if (candidates.length > 0) {{
-      candidates.sort((a, b) => b.y - a.y);
-      lockedEnemy = candidates[0];
-    }}
-  }}
-
-  if (lockedEnemy) {{
-    const expected = lockedEnemy.enLower[lockedEnemy.typed];
-    if (key === expected) {{
-      if (!isFromSkill) correctChars++;
-      lockedEnemy.typed++;
-      playSound('laser');
-
-      const shipX = canvas.width / 2;
-      const shipY = canvas.height - 105;
-      shipAngle = Math.atan2(lockedEnemy.y - shipY, lockedEnemy.x - shipX);
-      lasers.push({{ x1: shipX, y1: shipY, x2: lockedEnemy.x, y2: lockedEnemy.y, life: 1.0 }});
-      createExplosion(lockedEnemy.x, lockedEnemy.y, isFromSkill ? "#FACC15" : "#38BDF8");
-
-      const typedPart = lockedEnemy.en.slice(0, lockedEnemy.typed);
-      document.getElementById("typing-bar").innerText = typedPart.toUpperCase();
-
-      if (lockedEnemy.typed >= lockedEnemy.en.length) {{
-        playSound('boom');
-        createExplosion(lockedEnemy.x, lockedEnemy.y, "#F59E0B");
-        combo++;
-        if (combo > maxCombo) maxCombo = combo;
-        score += (lockedEnemy.en.length * 10) + (combo * 5);
-        enemies = enemies.filter(e => e !== lockedEnemy);
-        lockedEnemy = null;
-        document.getElementById("typing-bar").innerText = "🎯 MỤC TIÊU BỊ HẠ!";
+      if (finalScore > oldScore) {{
+        await fetch(`${{SB_URL}}/rest/v1/space_leaderboard?username=eq.${{encodeURIComponent(PLAYER_NAME)}}`, {{
+          method: "PATCH",
+          headers: headers,
+          body: JSON.stringify({{
+            high_score: finalScore,
+            max_combo: Math.max(finalCombo, oldCombo),
+            updated_at: new Date().toISOString()
+          }})
+        }});
+        statusEl.style.color = "#4ADE80";
+        statusEl.style.borderColor = "#4ADE80";
+        statusEl.innerText = `🎉 PHÁ KỶ LỤC CÁ NHÂN! Đã tự động cập nhật ${{finalScore.toLocaleString()}} đ lên Top!`;
+      }} else {{
+        statusEl.style.color = "#94A3B8";
+        statusEl.style.borderColor = "#475569";
+        statusEl.innerText = `🏅 Kỷ lục cao nhất của bạn hiện là ${{oldScore.toLocaleString()}} đ (giữ nguyên trên Top).`;
       }}
     }} else {{
-      combo = 0;
-      playSound('error');
+      // 2. Chưa có trên BXH -> Thêm mới
+      await fetch(`${{SB_URL}}/rest/v1/space_leaderboard`, {{
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({{
+          username: PLAYER_NAME,
+          high_score: finalScore,
+          max_combo: finalCombo
+        }})
+      }});
+      statusEl.style.color = "#4ADE80";
+      statusEl.style.borderColor = "#4ADE80";
+      statusEl.innerText = `🚀 Đã tự động ghi danh ${{finalScore.toLocaleString()}} đ lên Bảng Xếp Hạng!`;
     }}
-  }} else {{
-    combo = 0;
-    playSound('error');
-  }}
-  updateHUD();
-}}
-
-window.addEventListener("keydown", (e) => {{
-  if (e.key === "Backspace") {{
-    lockedEnemy = null;
-    document.getElementById("typing-bar").innerText = "Đã hủy khóa mục tiêu";
-    return;
-  }}
-  if (e.key.length === 1) {{
-    e.preventDefault();
-    handleKeyInput(e.key);
-  }}
-}});
-
-mobileInput.addEventListener("input", (e) => {{
-  const val = mobileInput.value;
-  if (val.length > 0) {{
-    handleKeyInput(val[val.length - 1]);
-    mobileInput.value = "";
-  }}
-}});
-
-function copyShareText() {{
-  navigator.clipboard.writeText(lastShareSummary);
-  document.getElementById("btn-copy").innerText = "✅ Đã copy! Dán gửi bạn bè ngay";
-}}
-
-function endGame(isVictory) {{
-  isRunning = false;
-  const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
-  document.getElementById("end-title").innerText = isVictory ? "🏆 CHIẾN THẮNG TUYỆT ĐỐI!" : "💥 TÀU CHỦ BỊ PHÁ HỦY!";
-  document.getElementById("end-stats").innerHTML = 
-    `Điểm số: <b>${{score}}</b>  |  Max Combo: <b>${{maxCombo}}</b>  |  Độ chính xác: <b>${{accuracy}}%</b><br><span style="font-size:13px; color:#38BDF8;">(Mở mục 🏆 Bảng Xếp Hạng phía trên để lưu kỷ lục!)</span>`;
-
-  lastShareSummary = `🚀 [${{PLAYER_NAME}}] vừa đạt ${{score}} điểm (Max Combo x${{maxCombo}} | Chính xác ${{accuracy}}%) tại Space Vocab Defender! Bạn phá nổi kỷ lục này không?`;
-
-  const missedBox = document.getElementById("missed-box");
-  if (missedWords.length > 0) {{
-    missedBox.style.display = "block";
-    missedBox.innerHTML = "<b>⚠️ Các từ để lọt cần ôn lại:</b><br>" + 
-      missedWords.map(w => `• <b>${{w.en}}</b>: ${{w.vi}}`).join("<br>");
-  }} else {{
-    missedBox.style.display = "none";
-  }}
-  document.getElementById("end-screen").style.display = "flex";
-}}
-
-function gameLoop() {{
-  if (!isRunning) return;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (freezeFrames > 0) {{
-    freezeFrames--;
-    ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (freezeFrames === 0) updateHUD();
-  }}
-
-  const speedMultiplier = freezeFrames > 0 ? 0.3 : 1.0;
-
-  ctx.fillStyle = "#FFFFFF";
-  for (let s of stars) {{
-    s.y += s.s * speedMultiplier;
-    if (s.y > canvas.height) {{ s.y = 0; s.x = Math.random() * canvas.width; }}
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fill();
-  }}
-  ctx.globalAlpha = 1.0;
-
-  spawnTimer += speedMultiplier;
-  const maxOnScreen = 4;
-  if (spawnTimer > 150 && enemies.length < maxOnScreen && spawnQueue.length > 0) {{
-    spawnEnemy();
-    spawnTimer = 0;
-    updateHUD();
-  }}
-
-  for (let i = enemies.length - 1; i >= 0; i--) {{
-    let e = enemies[i];
-    e.y += e.speed * speedMultiplier;
-
-    if (e.y > canvas.height - 125) {{
-      playSound('boom');
-      createExplosion(e.x, e.y, "#EF4444");
-      missedWords.push({{ en: e.en, vi: e.vi }});
-      if (lockedEnemy === e) lockedEnemy = null;
-      enemies.splice(i, 1);
-      lives--;
-      combo = 0;
-      updateHUD();
-      if (lives <= 0) {{
-        endGame(false);
-        return;
-      }}
-      continue;
-    }}
-
-    const isLocked = (lockedEnemy === e);
-
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.fillStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#EF4444");
-    ctx.beginPath();
-    ctx.moveTo(0, 16);
-    ctx.lineTo(-18, -10);
-    ctx.lineTo(0, -4);
-    ctx.lineTo(18, -10);
-    ctx.closePath();
-    ctx.fill();
-
-    const hintText = formatHint(e.en, e.typed);
-    ctx.font = "bold 15px 'Segoe UI', sans-serif";
-    const viWidth = ctx.measureText(e.vi).width;
-    ctx.font = "bold 14px monospace";
-    const hintWidth = ctx.measureText(hintText).width;
-    const boxW = Math.max(viWidth, hintWidth) + 26;
-    const boxH = 46;
-
-    ctx.fillStyle = isLocked ? "rgba(30, 41, 59, 0.95)" : "rgba(15, 23, 42, 0.85)";
-    ctx.strokeStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#475569");
-    ctx.lineWidth = isLocked ? 2 : 1;
-    ctx.beginPath();
-    ctx.roundRect(-boxW / 2, -62, boxW, boxH, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#F8FAFC";
-    ctx.font = "bold 14px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(e.vi, 0, -43);
-
-    ctx.fillStyle = isLocked ? "#38BDF8" : "#94A3B8";
-    ctx.font = "bold 14px monospace";
-    ctx.fillText(hintText, 0, -24);
-    ctx.restore();
-  }}
-
-  for (let i = lasers.length - 1; i >= 0; i--) {{
-    let l = lasers[i];
-    ctx.strokeStyle = `rgba(56, 189, 248, ${{l.life}})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(l.x1, l.y1);
-    ctx.lineTo(l.x2, l.y2);
-    ctx.stroke();
-    l.life -= 0.12;
-    if (l.life <= 0) lasers.splice(i, 1);
-  }}
-
-  for (let i = particles.length - 1; i >= 0; i--) {{
-    let p = particles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life -= 0.04;
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.fillRect(p.x, p.y, 3, 3);
-    if (p.life <= 0) particles.splice(i, 1);
-  }}
-  ctx.globalAlpha = 1.0;
-
-  const shipX = canvas.width / 2;
-  const shipY = canvas.height - 105;
-  ctx.save();
-  ctx.translate(shipX, shipY);
-  ctx.rotate(shipAngle + Math.PI / 2);
-  ctx.fillStyle = "#38BDF8";
-  ctx.beginPath();
-  ctx.moveTo(0, -22);
-  ctx.lineTo(-16, 16);
-  ctx.lineTo(0, 10);
-  ctx.lineTo(16, 16);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  if (spawnQueue.length === 0 && enemies.length === 0) {{
-    endGame(true);
-    return;
-  }}
-
-  requestAnimationFrame(gameLoop);
-}}
-</script>
-</body>
-</html>
-"""
-
-components.html(game_html, height=630)
+  }} catch (err) {{
+    statusEl.style.color = "#FCA5A5";
+    statusEl.innerText
