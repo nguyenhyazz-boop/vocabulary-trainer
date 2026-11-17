@@ -91,8 +91,18 @@ with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expand
     )
 
     selected_words = []
-    if select_type == "Rút ngẫu nhiên theo số lượng":
-        num_words = st.slider("Số lượng tàu địch (từ vựng):", min_value=5, max_value=min(50, len(all_keys)), value=min(15, len(all_keys)))
+  if select_type == "Rút ngẫu nhiên theo số lượng":
+        max_w = min(50, len(all_keys))
+        if max_w <= 1:
+            num_words = max_w
+            st.info(f"Kho hiện chỉ có **{num_words}** từ, hệ thống sẽ đưa toàn bộ vào trận!")
+        else:
+            num_words = st.slider(
+                "Số lượng tàu địch (từ vựng):",
+                min_value=1,
+                max_value=max_w,
+                value=min(15, max_w)
+            )
         if st.button("🔄 Đổi bộ từ ngẫu nhiên khác"):
             st.session_state.space_seed = random.randint(1, 99999)
         seed = st.session_state.get("space_seed", 42)
