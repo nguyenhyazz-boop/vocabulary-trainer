@@ -89,7 +89,16 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 username = st.session_state.username
 
 # Đọc kho từ vựng mẫu và kho cá nhân của user
-sample_data = load_data("sample_words.json")
+local_sample = {}
+if os.path.exists("sample_words.json"):
+    with open("sample_words.json", "r", encoding="utf-8") as f:
+        local_sample = json.load(f)
+
+cloud_sample = load_data("sample_words.json")
+if not isinstance(cloud_sample, dict):
+    cloud_sample = {}
+
+sample_data = {**local_sample, **cloud_sample}
 user_colloc = load_data(f"data_collocation_{username}.json")
 user_vocab = load_data(f"data_vocab_{username}.json")
 
