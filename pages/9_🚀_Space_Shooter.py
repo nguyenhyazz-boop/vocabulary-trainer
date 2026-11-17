@@ -31,7 +31,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="app-title">🚀 Space Vocab Defender</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng cách gõ chính xác từ tiếng Anh tương ứng với nghĩa tiếng Việt!</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng cách gõ chính xác từ tiếng Anh — Dùng điểm tích lũy để kích hoạt trợ giúp!</div>', unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -69,7 +69,6 @@ with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expand
             ["Chậm (Khởi động)", "Trung bình (Chuẩn)", "Nhanh (Phản xạ cao)"]
         )
 
-    # Lọc nguồn từ theo lựa chọn
     pool = {}
     if source_choice == "Normal Vocabulary":
         pool = vocab_data
@@ -121,7 +120,6 @@ if not selected_words:
     st.warning("Vui lòng chọn ít nhất 1 từ vựng để bắt đầu!")
     st.stop()
 
-# Chuẩn bị danh sách JSON truyền vào HTML5 Game
 game_words = []
 for w in selected_words:
     info = pool[w]
@@ -140,7 +138,7 @@ base_speed = speed_map[difficulty]
 show_hint = "true" if "Thường" in game_mode else "false"
 words_json = json.dumps(game_words, ensure_ascii=False)
 
-# --- 3. GIAO DIỆN GAME VŨ TRỤ (HTML5 CANVAS + JS) ---
+# --- 3. GIAO DIỆN GAME VŨ TRỤ + SHOP TRỢ GIÚP ---
 game_html = f"""
 <!DOCTYPE html>
 <html>
@@ -160,7 +158,7 @@ game_html = f"""
     position: relative;
     width: 100%;
     max-width: 840px;
-    height: 580px;
+    height: 610px;
     border-radius: 16px;
     overflow: hidden;
     border: 2px solid #1E293B;
@@ -180,12 +178,12 @@ game_html = f"""
     display: flex;
     justify-content: space-between;
     pointer-events: none;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     z-index: 5;
   }}
   .hud-pill {{
-    background: rgba(15, 23, 42, 0.75);
+    background: rgba(15, 23, 42, 0.78);
     border: 1px solid rgba(56, 189, 248, 0.35);
     padding: 6px 14px;
     border-radius: 999px;
@@ -193,25 +191,70 @@ game_html = f"""
   }}
   #typing-bar {{
     position: absolute;
-    bottom: 14px;
+    bottom: 62px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(15, 23, 42, 0.85);
     border: 1px solid #38BDF8;
     border-radius: 10px;
-    padding: 6px 18px;
-    font-size: 18px;
+    padding: 5px 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 2px;
     color: #38BDF8;
-    min-width: 220px;
+    min-width: 240px;
     text-align: center;
     z-index: 5;
+  }}
+  #shop-bar {{
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    z-index: 6;
+  }}
+  .skill-btn {{
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #334155;
+    color: #E2E8F0;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }}
+  .skill-btn.ready {{
+    border-color: #38BDF8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    color: #FFFFFF;
+  }}
+  .skill-btn.ready:hover {{
+    background: #0284C7;
+    transform: translateY(-2px);
+  }}
+  .skill-btn:disabled {{
+    opacity: 0.45;
+    cursor: not-allowed;
+  }}
+  .key-badge {{
+    background: #1E293B;
+    border: 1px solid #475569;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #38BDF8;
   }}
   .overlay {{
     position: absolute;
     inset: 0;
-    background: rgba(9, 13, 22, 0.88);
+    background: rgba(9, 13, 22, 0.9);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -229,9 +272,9 @@ game_html = f"""
   }}
   .overlay p {{
     color: #94A3B8;
-    max-width: 480px;
+    max-width: 520px;
     line-height: 1.5;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
   }}
   .btn-play {{
     background: linear-gradient(135deg, #0284C7, #4F46E5);
@@ -276,12 +319,25 @@ game_html = f"""
   </div>
 
   <div id="typing-bar">Gõ phím để bắn...</div>
+
+  <div id="shop-bar">
+    <button id="btn-hint" class="skill-btn" onclick="useSkill('hint')" disabled>
+      <span class="key-badge">1</span> ⚡ Gợi ý 1 chữ (50đ)
+    </button>
+    <button id="btn-freeze" class="skill-btn" onclick="useSkill('freeze')" disabled>
+      <span class="key-badge">2</span> ❄️ Đóng băng 5s (100đ)
+    </button>
+    <button id="btn-nuke" class="skill-btn" onclick="useSkill('nuke')" disabled>
+      <span class="key-badge">3</span> 💥 Bom EMP dọn bàn (200đ)
+    </button>
+  </div>
+
   <input id="mobile-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
   <div id="start-screen" class="overlay">
     <h2>SPACE VOCAB DEFENDER</h2>
     <p>Tàu địch mang <b>nghĩa tiếng Việt</b> đang tiến vào quỹ đạo.<br>
-    Gõ chính xác <b>từ tiếng Anh</b> tương ứng trên bàn phím để phi thuyền bắn laser tiêu diệt!</p>
+    Gõ chính xác <b>từ tiếng Anh</b> để tiêu diệt và tích điểm mua <b>Trợ giúp (phím 1, 2, 3)</b>!</p>
     <button class="btn-play" onclick="startGame()">🚀 XUẤT KÍCH NGAY</button>
   </div>
 
@@ -292,7 +348,7 @@ game_html = f"""
     <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
   </div>
 
-  <canvas id="gameCanvas" width="840" height="580"></canvas>
+  <canvas id="gameCanvas" width="840" height="610"></canvas>
 </div>
 
 <script>
@@ -329,6 +385,14 @@ function playSound(type) {{
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     osc.start(now);
     osc.stop(now + 0.25);
+  }} else if (type === 'skill') {{
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.22);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc.start(now);
+    osc.stop(now + 0.22);
   }} else if (type === 'error') {{
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(160, now);
@@ -365,6 +429,7 @@ let shipAngle = -Math.PI / 2;
 let missedWords = [];
 let correctChars = 0;
 let totalChars = 0;
+let freezeFrames = 0;
 
 function focusInput() {{
   mobileInput.focus();
@@ -407,6 +472,7 @@ function startGame() {{
   lives = 3;
   correctChars = 0;
   totalChars = 0;
+  freezeFrames = 0;
   spawnTimer = 999;
   isRunning = true;
   
@@ -452,14 +518,73 @@ function updateHUD() {{
   document.getElementById("combo").innerText = combo;
   document.getElementById("remaining").innerText = spawnQueue.length + enemies.length;
   document.getElementById("lives").innerText = "❤️".repeat(Math.max(0, lives));
+
+  // Cập nhật trạng thái nút mua kỹ năng
+  const btnHint = document.getElementById("btn-hint");
+  const btnFreeze = document.getElementById("btn-freeze");
+  const btnNuke = document.getElementById("btn-nuke");
+
+  btnHint.disabled = score < 50 || enemies.length === 0;
+  btnFreeze.disabled = score < 100 || freezeFrames > 0;
+  btnNuke.disabled = score < 200 || enemies.length === 0;
+
+  btnHint.classList.toggle("ready", !btnHint.disabled);
+  btnFreeze.classList.toggle("ready", !btnFreeze.disabled);
+  btnNuke.classList.toggle("ready", !btnNuke.disabled);
 }}
 
-function handleKeyInput(char) {{
+function useSkill(type) {{
   if (!isRunning) return;
-  const key = char.toLowerCase();
-  if (!/^[a-z0-9\\s\\-']$/.test(key)) return;
+  focusInput();
 
-  totalChars++;
+  if (type === 'hint' && score >= 50 && enemies.length > 0) {{
+    score -= 50;
+    playSound('skill');
+
+    // Nếu chưa khóa mục tiêu nào, tự khóa tàu địch gần đáy nhất
+    if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
+      let sorted = [...enemies].sort((a, b) => b.y - a.y);
+      lockedEnemy = sorted[0];
+    }}
+
+    // Tự động bắn 1 chữ cái tiếp theo
+    const nextChar = lockedEnemy.enLower[lockedEnemy.typed];
+    handleKeyInput(nextChar, true);
+  }} 
+  else if (type === 'freeze' && score >= 100 && freezeFrames <= 0) {{
+    score -= 100;
+    freezeFrames = 300; // 5 giây (60fps * 5)
+    playSound('skill');
+    document.getElementById("typing-bar").innerText = "❄️ ĐÓNG BĂNG VŨ TRỤ (5s)!";
+  }} 
+  else if (type === 'nuke' && score >= 200 && enemies.length > 0) {{
+    score -= 200;
+    playSound('boom');
+    for (let e of enemies) {{
+      createExplosion(e.x, e.y, "#A855F7");
+      score += 30; // Cộng điểm dọn dẹp nhẹ
+    }}
+    enemies = [];
+    lockedEnemy = null;
+    document.getElementById("typing-bar").innerText = "💥 BOM EMP QUÉT SẠCH MÀN HÌNH!";
+  }}
+  updateHUD();
+}}
+
+function handleKeyInput(char, isFromSkill = false) {{
+  if (!isRunning) return;
+
+  // Phím tắt kích hoạt nhanh trợ giúp 1, 2, 3
+  if (!isFromSkill) {{
+    if (char === '1') {{ useSkill('hint'); return; }}
+    if (char === '2') {{ useSkill('freeze'); return; }}
+    if (char === '3') {{ useSkill('nuke'); return; }}
+  }}
+
+  const key = char.toLowerCase();
+  if (!/^[a-z\\s\\-']$/.test(key)) return;
+
+  if (!isFromSkill) totalChars++;
 
   if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
     lockedEnemy = null;
@@ -473,15 +598,15 @@ function handleKeyInput(char) {{
   if (lockedEnemy) {{
     const expected = lockedEnemy.enLower[lockedEnemy.typed];
     if (key === expected) {{
-      correctChars++;
+      if (!isFromSkill) correctChars++;
       lockedEnemy.typed++;
       playSound('laser');
 
       const shipX = canvas.width / 2;
-      const shipY = canvas.height - 65;
+      const shipY = canvas.height - 105;
       shipAngle = Math.atan2(lockedEnemy.y - shipY, lockedEnemy.x - shipX);
       lasers.push({{ x1: shipX, y1: shipY, x2: lockedEnemy.x, y2: lockedEnemy.y, life: 1.0 }});
-      createExplosion(lockedEnemy.x, lockedEnemy.y, "#38BDF8");
+      createExplosion(lockedEnemy.x, lockedEnemy.y, isFromSkill ? "#FACC15" : "#38BDF8");
 
       const typedPart = lockedEnemy.en.slice(0, lockedEnemy.typed);
       document.getElementById("typing-bar").innerText = typedPart.toUpperCase();
@@ -550,9 +675,19 @@ function gameLoop() {{
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Hiệu ứng viền băng khi đang dùng skill Đóng Băng
+  if (freezeFrames > 0) {{
+    freezeFrames--;
+    ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (freezeFrames === 0) updateHUD();
+  }}
+
+  const speedMultiplier = freezeFrames > 0 ? 0.3 : 1.0;
+
   ctx.fillStyle = "#FFFFFF";
   for (let s of stars) {{
-    s.y += s.s;
+    s.y += s.s * speedMultiplier;
     if (s.y > canvas.height) {{ s.y = 0; s.x = Math.random() * canvas.width; }}
     ctx.globalAlpha = 0.5;
     ctx.beginPath();
@@ -561,18 +696,19 @@ function gameLoop() {{
   }}
   ctx.globalAlpha = 1.0;
 
-  spawnTimer++;
+  spawnTimer += speedMultiplier;
   const maxOnScreen = 4;
   if (spawnTimer > 150 && enemies.length < maxOnScreen && spawnQueue.length > 0) {{
     spawnEnemy();
     spawnTimer = 0;
+    updateHUD();
   }}
 
   for (let i = enemies.length - 1; i >= 0; i--) {{
     let e = enemies[i];
-    e.y += e.speed;
+    e.y += e.speed * speedMultiplier;
 
-    if (e.y > canvas.height - 85) {{
+    if (e.y > canvas.height - 125) {{
       playSound('boom');
       createExplosion(e.x, e.y, "#EF4444");
       missedWords.push({{ en: e.en, vi: e.vi }});
@@ -592,7 +728,7 @@ function gameLoop() {{
 
     ctx.save();
     ctx.translate(e.x, e.y);
-    ctx.fillStyle = isLocked ? "#F59E0B" : "#EF4444";
+    ctx.fillStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#EF4444");
     ctx.beginPath();
     ctx.moveTo(0, 16);
     ctx.lineTo(-18, -10);
@@ -610,7 +746,7 @@ function gameLoop() {{
     const boxH = 46;
 
     ctx.fillStyle = isLocked ? "rgba(30, 41, 59, 0.95)" : "rgba(15, 23, 42, 0.85)";
-    ctx.strokeStyle = isLocked ? "#F59E0B" : "#475569";
+    ctx.strokeStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#475569");
     ctx.lineWidth = isLocked ? 2 : 1;
     ctx.beginPath();
     ctx.roundRect(-boxW / 2, -62, boxW, boxH, 8);
@@ -653,7 +789,7 @@ function gameLoop() {{
   ctx.globalAlpha = 1.0;
 
   const shipX = canvas.width / 2;
-  const shipY = canvas.height - 65;
+  const shipY = canvas.height - 105;
   ctx.save();
   ctx.translate(shipX, shipY);
   ctx.rotate(shipAngle + Math.PI / 2);
@@ -679,4 +815,4 @@ function gameLoop() {{
 </html>
 """
 
-components.html(game_html, height=600)
+components.html(game_html, height=630)
