@@ -2,9 +2,57 @@ import json
 import random
 import streamlit as st
 import streamlit.components.v1 as components
+from supabase import create_client
 from utils.data_manager import load_data
 
 st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="🚀", layout="wide")
+
+# --- KẾT NỐI SUPABASE CHO BẢNG XẾP HẠNG ---
+@st.cache_resource
+def get_supabase():
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception:
+        return None
+
+supabase = get_supabase()
+
+def get_leaderboard():
+    if not supabase:
+        return []
+    try:
+        res = supabase.table("space_leaderboard").select("*").order("high_score", desc=True).limit(10).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+def submit_high_score(user: str, new_score: int, new_combo: int):
+    if not supabase or new_score <= 0:
+        return False, "Điểm phải lớn hơn 0 để ghi danh!"
+    try:
+        existing = supabase.table("space_leaderboard").select("*").eq("username", user).execute()
+        if existing.data:
+            old_score = existing.data[0].get("high_score", 0)
+            old_combo = existing.data[0].get("max_combo", 0)
+            if new_score > old_score:
+                supabase.table("space_leaderboard").update({
+                    "high_score": new_score,
+                    "max_combo": max(new_combo, old_combo)
+                }).eq("username", user).execute()
+                return True, f"🎉 Phá kỷ lục cá nhân! Đã cập nhật {new_score:,} điểm lên Bảng Xếp Hạng!"
+            else:
+                return False, f"Kỷ lục hiện tại của bạn đang là {old_score:,} điểm (cao hơn lượt này)."
+        else:
+            supabase.table("space_leaderboard").insert({
+                "username": user,
+                "high_score": new_score,
+                "max_combo": new_combo
+            }).execute()
+            return True, f"🚀 Đã ghi danh thành công với {new_score:,} điểm!"
+    except Exception as e:
+        return False, f"Lỗi kết nối bảng xếp hạng: {e}"
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -12,7 +60,7 @@ st.markdown("""
     .main .block-container {
         padding-top: 1.5rem;
         padding-bottom: 2rem;
-        max-width: 900px !important;
+        max-width: 920px !important;
     }
     .app-title {
         font-size: 1.9rem !important;
@@ -25,13 +73,29 @@ st.markdown("""
         text-align: center;
         color: #64748B;
         font-size: 0.95rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
+    .lb-card {
+        background: linear-gradient(135deg, #0F172A, #1E293B);
+        color: #F8FAFC;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        border: 1px solid #334155;
+    }
+    .lb-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 10px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        font-size: 0.92rem;
+    }
+    .lb-row:last-child { border-bottom: none; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="app-title">🚀 Space Vocab Defender</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng cách gõ chính xác từ tiếng Anh — Dùng điểm tích lũy để kích hoạt trợ giúp!</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Đua Top Bảng Xếp Hạng cùng bạn bè!</div>', unsafe_allow_html=True)
 
 # Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -39,6 +103,46 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 username = st.session_state.username
+
+# --- BẢNG XẾP HẠNG TOP 10 ---
+with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded=False):
+    lb_data = get_leaderboard()
+    if not lb_data:
+        st.info("Chưa có ai ghi danh trên Bảng Xếp Hạng. Hãy là người đầu tiên lập kỷ lục!")
+    else:
+        medals = ["🥇", "🥈", "🥉"]
+        rows_html = ""
+        for idx, row in enumerate(lb_data):
+            rank_icon = medals[idx] if idx < 3 else f"#{idx + 1}"
+            u_name = row.get("username", "Unknown")
+            h_score = row.get("high_score", 0)
+            m_combo = row.get("max_combo", 0)
+            highlight = "color: #38BDF8; font-weight: 700;" if u_name == username else ""
+            rows_html += f"""
+            <div class="lb-row" style="{highlight}">
+                <span>{rank_icon} <b>{u_name}</b></span>
+                <span>🔥 Combo x{m_combo}  |  ⭐ <b>{h_score:,} đ</b></span>
+            </div>
+            """
+        st.markdown(f'<div class="lb-card">{rows_html}</div>', unsafe_allow_html=True)
+
+    # Khu vực lưu điểm sau trận đấu
+    st.caption("Vừa hoàn thành trận đấu? Nhập điểm số vừa đạt được để cập nhật kỷ lục:")
+    c_s1, c_s2, c_s3 = st.columns([2, 2, 2])
+    with c_s1:
+        input_score = st.number_input("Điểm vừa đạt:", min_value=0, step=10, value=0)
+    with c_s2:
+        input_combo = st.number_input("Max Combo:", min_value=0, step=1, value=0)
+    with c_s3:
+        st.write("")
+        st.write("")
+        if st.button("🚀 Lưu kỷ lục lên Top", use_container_width=True, type="primary"):
+            ok, msg = submit_high_score(username, int(input_score), int(input_combo))
+            if ok:
+                st.success(msg)
+                st.rerun()
+            else:
+                st.warning(msg)
 
 # --- 1. TẢI DỮ LIỆU TỪ VỰNG CỦA USER ---
 vocab_data = load_data(f"data_vocab_{username}.json")
@@ -138,7 +242,7 @@ base_speed = speed_map[difficulty]
 show_hint = "true" if "Thường" in game_mode else "false"
 words_json = json.dumps(game_words, ensure_ascii=False)
 
-# --- 3. GIAO DIỆN GAME VŨ TRỤ + SHOP TRỢ GIÚP ---
+# --- 3. GIAO DIỆN GAME VŨ TRỤ + SHOP TRỢ GIÚP + CHIA SẺ ---
 game_html = f"""
 <!DOCTYPE html>
 <html>
@@ -254,7 +358,7 @@ game_html = f"""
   .overlay {{
     position: absolute;
     inset: 0;
-    background: rgba(9, 13, 22, 0.9);
+    background: rgba(9, 13, 22, 0.92);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -274,14 +378,20 @@ game_html = f"""
     color: #94A3B8;
     max-width: 520px;
     line-height: 1.5;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
+  }}
+  .btn-group {{
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
   }}
   .btn-play {{
     background: linear-gradient(135deg, #0284C7, #4F46E5);
     color: white;
     border: none;
-    padding: 14px 34px;
-    font-size: 17px;
+    padding: 12px 26px;
+    font-size: 15px;
     font-weight: 700;
     border-radius: 12px;
     cursor: pointer;
@@ -289,10 +399,21 @@ game_html = f"""
     transition: transform 0.15s;
   }}
   .btn-play:hover {{ transform: scale(1.05); }}
+  .btn-share {{
+    background: #1E293B;
+    color: #38BDF8;
+    border: 1px solid #38BDF8;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+  }}
+  .btn-share:hover {{ background: #0F172A; }}
   #missed-box {{
-    margin-top: 14px;
-    margin-bottom: 18px;
-    max-height: 140px;
+    margin-top: 10px;
+    margin-bottom: 16px;
+    max-height: 130px;
     overflow-y: auto;
     background: rgba(30, 41, 59, 0.7);
     padding: 10px 18px;
@@ -345,7 +466,10 @@ game_html = f"""
     <h2 id="end-title">HOÀN THÀNH NHIỆM VỤ!</h2>
     <p id="end-stats"></p>
     <div id="missed-box" style="display: none;"></div>
-    <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
+    <div class="btn-group">
+      <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
+      <button id="btn-copy" class="btn-share" onclick="copyShareText()">📋 Copy thành tích khoe bạn bè</button>
+    </div>
   </div>
 
   <canvas id="gameCanvas" width="840" height="610"></canvas>
@@ -355,6 +479,7 @@ game_html = f"""
 const WORD_LIST = {words_json};
 const BASE_SPEED = {base_speed};
 const SHOW_HINT = {show_hint};
+const PLAYER_NAME = "{username}";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -430,6 +555,7 @@ let missedWords = [];
 let correctChars = 0;
 let totalChars = 0;
 let freezeFrames = 0;
+let lastShareSummary = "";
 
 function focusInput() {{
   mobileInput.focus();
@@ -459,6 +585,7 @@ function formatHint(word, typedCount) {{
 function startGame() {{
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("end-screen").style.display = "none";
+  document.getElementById("btn-copy").innerText = "📋 Copy thành tích khoe bạn bè";
   
   spawnQueue = [...WORD_LIST].sort(() => Math.random() - 0.5);
   enemies = [];
@@ -519,7 +646,6 @@ function updateHUD() {{
   document.getElementById("remaining").innerText = spawnQueue.length + enemies.length;
   document.getElementById("lives").innerText = "❤️".repeat(Math.max(0, lives));
 
-  // Cập nhật trạng thái nút mua kỹ năng
   const btnHint = document.getElementById("btn-hint");
   const btnFreeze = document.getElementById("btn-freeze");
   const btnNuke = document.getElementById("btn-nuke");
@@ -540,20 +666,16 @@ function useSkill(type) {{
   if (type === 'hint' && score >= 50 && enemies.length > 0) {{
     score -= 50;
     playSound('skill');
-
-    // Nếu chưa khóa mục tiêu nào, tự khóa tàu địch gần đáy nhất
     if (!lockedEnemy || !enemies.includes(lockedEnemy)) {{
       let sorted = [...enemies].sort((a, b) => b.y - a.y);
       lockedEnemy = sorted[0];
     }}
-
-    // Tự động bắn 1 chữ cái tiếp theo
     const nextChar = lockedEnemy.enLower[lockedEnemy.typed];
     handleKeyInput(nextChar, true);
   }} 
   else if (type === 'freeze' && score >= 100 && freezeFrames <= 0) {{
     score -= 100;
-    freezeFrames = 300; // 5 giây (60fps * 5)
+    freezeFrames = 300;
     playSound('skill');
     document.getElementById("typing-bar").innerText = "❄️ ĐÓNG BĂNG VŨ TRỤ (5s)!";
   }} 
@@ -562,7 +684,7 @@ function useSkill(type) {{
     playSound('boom');
     for (let e of enemies) {{
       createExplosion(e.x, e.y, "#A855F7");
-      score += 30; // Cộng điểm dọn dẹp nhẹ
+      score += 30;
     }}
     enemies = [];
     lockedEnemy = null;
@@ -574,7 +696,6 @@ function useSkill(type) {{
 function handleKeyInput(char, isFromSkill = false) {{
   if (!isRunning) return;
 
-  // Phím tắt kích hoạt nhanh trợ giúp 1, 2, 3
   if (!isFromSkill) {{
     if (char === '1') {{ useSkill('hint'); return; }}
     if (char === '2') {{ useSkill('freeze'); return; }}
@@ -652,12 +773,19 @@ mobileInput.addEventListener("input", (e) => {{
   }}
 }});
 
+function copyShareText() {{
+  navigator.clipboard.writeText(lastShareSummary);
+  document.getElementById("btn-copy").innerText = "✅ Đã copy! Dán gửi bạn bè ngay";
+}}
+
 function endGame(isVictory) {{
   isRunning = false;
   const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
   document.getElementById("end-title").innerText = isVictory ? "🏆 CHIẾN THẮNG TUYỆT ĐỐI!" : "💥 TÀU CHỦ BỊ PHÁ HỦY!";
   document.getElementById("end-stats").innerHTML = 
-    `Điểm số: <b>${{score}}</b>  |  Max Combo: <b>${{maxCombo}}</b>  |  Độ chính xác: <b>${{accuracy}}%</b>`;
+    `Điểm số: <b>${{score}}</b>  |  Max Combo: <b>${{maxCombo}}</b>  |  Độ chính xác: <b>${{accuracy}}%</b><br><span style="font-size:13px; color:#38BDF8;">(Mở mục 🏆 Bảng Xếp Hạng phía trên để lưu kỷ lục!)</span>`;
+
+  lastShareSummary = `🚀 [${{PLAYER_NAME}}] vừa đạt ${{score}} điểm (Max Combo x${{maxCombo}} | Chính xác ${{accuracy}}%) tại Space Vocab Defender! Bạn phá nổi kỷ lục này không?`;
 
   const missedBox = document.getElementById("missed-box");
   if (missedWords.length > 0) {{
@@ -675,7 +803,6 @@ function gameLoop() {{
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Hiệu ứng viền băng khi đang dùng skill Đóng Băng
   if (freezeFrames > 0) {{
     freezeFrames--;
     ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
