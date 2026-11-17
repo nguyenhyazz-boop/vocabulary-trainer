@@ -209,27 +209,27 @@ speed_map = {
     "Trung bình (Chuẩn)": 0.6,
     "Nhanh (Phản xạ cao)": 0.95
 }
-base_speed = speed_map[difficulty]
+base_speed = str(speed_map[difficulty])
 show_hint = "true" if "Thường" in game_mode else "false"
 words_json = json.dumps(game_words, ensure_ascii=False)
 
 # --- 3. GIAO DIỆN GAME VŨ TRỤ + TỰ ĐỘNG ĐỒNG BỘ SUPABASE ---
-game_html = f"""
+html_template = """
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; }}
-  body {{
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body {
     background: #090D16;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     color: #F8FAFC;
     display: flex;
     flex-direction: column;
     align-items: center;
-  }}
-  #game-wrapper {{
+  }
+  #game-wrapper {
     position: relative;
     width: 100%;
     max-width: 840px;
@@ -239,13 +239,13 @@ game_html = f"""
     border: 2px solid #1E293B;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
-  }}
-  canvas {{
+  }
+  canvas {
     display: block;
     width: 100%;
     height: 100%;
-  }}
-  #hud {{
+  }
+  #hud {
     position: absolute;
     top: 14px;
     left: 18px;
@@ -256,15 +256,15 @@ game_html = f"""
     font-size: 14px;
     font-weight: 700;
     z-index: 5;
-  }}
-  .hud-pill {{
+  }
+  .hud-pill {
     background: rgba(15, 23, 42, 0.78);
     border: 1px solid rgba(56, 189, 248, 0.35);
     padding: 6px 14px;
     border-radius: 999px;
     backdrop-filter: blur(4px);
-  }}
-  #typing-bar {{
+  }
+  #typing-bar {
     position: absolute;
     bottom: 62px;
     left: 50%;
@@ -280,8 +280,8 @@ game_html = f"""
     min-width: 240px;
     text-align: center;
     z-index: 5;
-  }}
-  #shop-bar {{
+  }
+  #shop-bar {
     position: absolute;
     bottom: 12px;
     left: 16px;
@@ -289,246 +289,3 @@ game_html = f"""
     display: flex;
     justify-content: center;
     gap: 10px;
-    z-index: 6;
-  }}
-  .skill-btn {{
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid #334155;
-    color: #E2E8F0;
-    padding: 7px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s;
-  }}
-  .skill-btn.ready {{
-    border-color: #38BDF8;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-    color: #FFFFFF;
-  }}
-  .skill-btn.ready:hover {{
-    background: #0284C7;
-    transform: translateY(-2px);
-  }}
-  .skill-btn:disabled {{
-    opacity: 0.45;
-    cursor: not-allowed;
-  }}
-  .key-badge {{
-    background: #1E293B;
-    border: 1px solid #475569;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    color: #38BDF8;
-  }}
-  .overlay {{
-    position: absolute;
-    inset: 0;
-    background: rgba(9, 13, 22, 0.92);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 24px;
-    z-index: 10;
-  }}
-  .overlay h2 {{
-    font-size: 32px;
-    margin-bottom: 10px;
-    background: linear-gradient(90deg, #38BDF8, #818CF8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }}
-  .overlay p {{
-    color: #94A3B8;
-    max-width: 520px;
-    line-height: 1.5;
-    margin-bottom: 14px;
-  }}
-  #sync-status {{
-    font-size: 14px;
-    font-weight: 700;
-    color: #38BDF8;
-    margin-bottom: 14px;
-    padding: 6px 16px;
-    border-radius: 999px;
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-  }}
-  .btn-group {{
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }}
-  .btn-play {{
-    background: linear-gradient(135deg, #0284C7, #4F46E5);
-    color: white;
-    border: none;
-    padding: 12px 26px;
-    font-size: 15px;
-    font-weight: 700;
-    border-radius: 12px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
-    transition: transform 0.15s;
-  }}
-  .btn-play:hover {{ transform: scale(1.05); }}
-  .btn-share {{
-    background: #1E293B;
-    color: #38BDF8;
-    border: 1px solid #38BDF8;
-    padding: 12px 22px;
-    font-size: 15px;
-    font-weight: 700;
-    border-radius: 12px;
-    cursor: pointer;
-  }}
-  .btn-share:hover {{ background: #0F172A; }}
-  #missed-box {{
-    margin-top: 6px;
-    margin-bottom: 16px;
-    max-height: 125px;
-    overflow-y: auto;
-    background: rgba(30, 41, 59, 0.7);
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 14px;
-    color: #FCA5A5;
-    text-align: left;
-  }}
-  #mobile-input {{
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }}
-</style>
-</head>
-<body>
-
-<div id="game-wrapper" onclick="focusInput()">
-  <div id="hud">
-    <div class="hud-pill">⭐ Điểm: <span id="score">0</span></div>
-    <div class="hud-pill">🔥 Combo: <span id="combo">0</span></div>
-    <div class="hud-pill">🛸 Còn lại: <span id="remaining">0</span></div>
-    <div class="hud-pill">❤️ Giáp: <span id="lives">3</span></div>
-  </div>
-
-  <div id="typing-bar">Gõ phím để bắn...</div>
-
-  <div id="shop-bar">
-    <button id="btn-hint" class="skill-btn" onclick="useSkill('hint')" disabled>
-      <span class="key-badge">1</span> ⚡ Gợi ý 1 chữ (50đ)
-    </button>
-    <button id="btn-freeze" class="skill-btn" onclick="useSkill('freeze')" disabled>
-      <span class="key-badge">2</span> ❄️ Đóng băng 5s (100đ)
-    </button>
-    <button id="btn-nuke" class="skill-btn" onclick="useSkill('nuke')" disabled>
-      <span class="key-badge">3</span> 💥 Bom EMP dọn bàn (200đ)
-    </button>
-  </div>
-
-  <input id="mobile-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-
-  <div id="start-screen" class="overlay">
-    <h2>SPACE VOCAB DEFENDER</h2>
-    <p>Tàu địch mang <b>nghĩa tiếng Việt</b> đang tiến vào quỹ đạo.<br>
-    Gõ chính xác <b>từ tiếng Anh</b> để tiêu diệt và tích điểm mua <b>Trợ giúp (phím 1, 2, 3)</b>!</p>
-    <button class="btn-play" onclick="startGame()">🚀 XUẤT KÍCH NGAY</button>
-  </div>
-
-  <div id="end-screen" class="overlay" style="display: none;">
-    <h2 id="end-title">HOÀN THÀNH NHIỆM VỤ!</h2>
-    <p id="end-stats"></p>
-    <div id="sync-status">⏳ Đang đồng bộ kỷ lục lên Bảng Xếp Hạng...</div>
-    <div id="missed-box" style="display: none;"></div>
-    <div class="btn-group">
-      <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
-      <button id="btn-copy" class="btn-share" onclick="copyShareText()">📋 Copy thành tích khoe bạn bè</button>
-    </div>
-  </div>
-
-  <canvas id="gameCanvas" width="840" height="610"></canvas>
-</div>
-
-<script>
-const WORD_LIST = {words_json};
-const BASE_SPEED = {base_speed};
-const SHOW_HINT = {show_hint};
-const PLAYER_NAME = "{username}";
-const SB_URL = "{SUPABASE_URL}";
-const SB_KEY = "{SUPABASE_KEY}";
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const mobileInput = document.getElementById("mobile-input");
-
-// --- HÀM TỰ ĐỘNG ĐỒNG BỘ KỶ LỤC LÊN SUPABASE ---
-async function autoSaveLeaderboard(finalScore, finalCombo) {{
-  const statusEl = document.getElementById("sync-status");
-  if (!SB_URL || !SB_KEY || finalScore <= 0) {{
-    statusEl.innerText = "ℹ️ Điểm bằng 0 nên chưa ghi danh lên Bảng Xếp Hạng.";
-    return;
-  }}
-
-  try {{
-    const headers = {{
-      "apikey": SB_KEY,
-      "Authorization": "Bearer " + SB_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation"
-    }};
-
-    // 1. Kiểm tra kỷ lục cũ của user
-    const checkRes = await fetch(`${{SB_URL}}/rest/v1/space_leaderboard?username=eq.${{encodeURIComponent(PLAYER_NAME)}}&select=*`, {{
-      method: "GET",
-      headers: headers
-    }});
-    const existing = await checkRes.json();
-
-    if (Array.isArray(existing) && existing.length > 0) {{
-      const oldScore = existing[0].high_score || 0;
-      const oldCombo = existing[0].max_combo || 0;
-
-      if (finalScore > oldScore) {{
-        await fetch(`${{SB_URL}}/rest/v1/space_leaderboard?username=eq.${{encodeURIComponent(PLAYER_NAME)}}`, {{
-          method: "PATCH",
-          headers: headers,
-          body: JSON.stringify({{
-            high_score: finalScore,
-            max_combo: Math.max(finalCombo, oldCombo),
-            updated_at: new Date().toISOString()
-          }})
-        }});
-        statusEl.style.color = "#4ADE80";
-        statusEl.style.borderColor = "#4ADE80";
-        statusEl.innerText = `🎉 PHÁ KỶ LỤC CÁ NHÂN! Đã tự động cập nhật ${{finalScore.toLocaleString()}} đ lên Top!`;
-      }} else {{
-        statusEl.style.color = "#94A3B8";
-        statusEl.style.borderColor = "#475569";
-        statusEl.innerText = `🏅 Kỷ lục cao nhất của bạn hiện là ${{oldScore.toLocaleString()}} đ (giữ nguyên trên Top).`;
-      }}
-    }} else {{
-      // 2. Chưa có trên BXH -> Thêm mới
-      await fetch(`${{SB_URL}}/rest/v1/space_leaderboard`, {{
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({{
-          username: PLAYER_NAME,
-          high_score: finalScore,
-          max_combo: finalCombo
-        }})
-      }});
-      statusEl.style.color = "#4ADE80";
-      statusEl.style.borderColor = "#4ADE80";
-      statusEl.innerText = `🚀 Đã tự động ghi danh ${{finalScore.toLocaleString()}} đ lên Bảng Xếp Hạng!`;
-    }}
-  }} catch (err) {{
-    statusEl.style.color = "#FCA5A5";
-    statusEl.innerText
