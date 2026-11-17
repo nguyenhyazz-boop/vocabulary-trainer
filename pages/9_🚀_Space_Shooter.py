@@ -214,7 +214,7 @@ show_hint = "true" if "Thường" in game_mode else "false"
 words_json = json.dumps(game_words, ensure_ascii=False)
 
 # --- 3. GIAO DIỆN GAME VŨ TRỤ + TỰ ĐỘNG ĐỒNG BỘ SUPABASE ---
-html_template = """
+html_template = r"""
 <!DOCTYPE html>
 <html>
 <head>
