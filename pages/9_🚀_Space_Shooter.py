@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import streamlit as st
 import streamlit.components.v1 as components
@@ -7,14 +8,8 @@ from utils.data_manager import load_data
 
 st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="🚀", layout="wide")
 
-# --- LẤY THÔNG TIN SUPABASE ---
-SUPABASE_URL = ""
-SUPABASE_KEY = ""
-try:
-    SUPABASE_URL = st.secrets["SUPABASE_URL"]
-    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-except Exception:
-    pass
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
 @st.cache_resource
 def get_supabase():
@@ -36,7 +31,6 @@ def get_leaderboard():
     except Exception:
         return []
 
-# --- CUSTOM CSS ---
 st.markdown("""
 <style>
     .main .block-container {
@@ -79,14 +73,12 @@ st.markdown("""
 st.markdown('<div class="app-title">🚀 Space Vocab Defender</div>', unsafe_allow_html=True)
 st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Kỷ lục tự động cập nhật lên Bảng Xếp Hạng!</div>', unsafe_allow_html=True)
 
-# Kiểm tra đăng nhập
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
     st.stop()
 
 username = st.session_state.username
 
-# --- BẢNG XẾP HẠNG TOP 10 (TỰ ĐỘNG ĐỒNG BỘ) ---
 with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded=False):
     col_lb1, col_lb2 = st.columns([4, 1])
     with col_lb1:
@@ -115,7 +107,6 @@ with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded
             """
         st.markdown(f'<div class="lb-card">{rows_html}</div>', unsafe_allow_html=True)
 
-# --- 1. TẢI DỮ LIỆU TỪ VỰNG CỦA USER ---
 vocab_data = load_data(f"data_vocab_{username}.json")
 colloc_data = load_data(f"data_collocation_{username}.json")
 
@@ -124,7 +115,6 @@ if not isinstance(vocab_data, dict):
 if not isinstance(colloc_data, dict):
     colloc_data = {}
 
-# --- 2. BẢNG THIẾT LẬP MÀN CHƠI ---
 with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expanded=True):
     col1, col2, col3 = st.columns(3)
 
@@ -209,83 +199,22 @@ speed_map = {
     "Trung bình (Chuẩn)": 0.6,
     "Nhanh (Phản xạ cao)": 0.95
 }
-base_speed = str(speed_map[difficulty])
-show_hint = "true" if "Thường" in game_mode else "false"
-words_json = json.dumps(game_words, ensure_ascii=False)
 
-# --- 3. GIAO DIỆN GAME VŨ TRỤ + TỰ ĐỘNG ĐỒNG BỘ SUPABASE ---
-html_template = r"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-  body {
-    background: #090D16;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    color: #F8FAFC;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  #game-wrapper {
-    position: relative;
-    width: 100%;
-    max-width: 840px;
-    height: 610px;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 2px solid #1E293B;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
-  }
-  canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-  #hud {
-    position: absolute;
-    top: 14px;
-    left: 18px;
-    right: 18px;
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
-    font-size: 14px;
-    font-weight: 700;
-    z-index: 5;
-  }
-  .hud-pill {
-    background: rgba(15, 23, 42, 0.78);
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    padding: 6px 14px;
-    border-radius: 999px;
-    backdrop-filter: blur(4px);
-  }
-  #typing-bar {
-    position: absolute;
-    bottom: 62px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid #38BDF8;
-    border-radius: 10px;
-    padding: 5px 18px;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: #38BDF8;
-    min-width: 240px;
-    text-align: center;
-    z-index: 5;
-  }
-  #shop-bar {
-    position: absolute;
-    bottom: 12px;
-    left: 16px;
-    right: 16px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
+config_payload = json.dumps({
+    "words": game_words,
+    "speed": speed_map[difficulty],
+    "hint": "Thường" in game_mode,
+    "player": username,
+    "sb_url": SUPABASE_URL,
+    "sb_key": SUPABASE_KEY
+}, ensure_ascii=False)
+
+if not os.path.exists("space_game.html"):
+    st.error("Không tìm thấy file space_game.html ở thư mục gốc!")
+    st.stop()
+
+with open("space_game.html", "r", encoding="utf-8") as f:
+    raw_html = f.read()
+
+final_html = raw_html.replace("__GAME_CONFIG__", config_payload)
+components.html(final_html, height=630)
