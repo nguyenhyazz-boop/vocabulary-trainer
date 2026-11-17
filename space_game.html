@@ -1,1 +1,775 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body {
+    background: #090D16;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #F8FAFC;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #game-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 840px;
+    height: 610px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #1E293B;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #hud {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    right: 18px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 5;
+  }
+  .hud-pill {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 6px 14px;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+  }
+  #typing-bar {
+    position: absolute;
+    bottom: 62px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid #38BDF8;
+    border-radius: 10px;
+    padding: 5px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #38BDF8;
+    min-width: 240px;
+    text-align: center;
+    z-index: 5;
+  }
+  #shop-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    z-index: 6;
+  }
+  .skill-btn {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #334155;
+    color: #E2E8F0;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .skill-btn.ready {
+    border-color: #38BDF8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    color: #FFFFFF;
+  }
+  .skill-btn.ready:hover {
+    background: #0284C7;
+    transform: translateY(-2px);
+  }
+  .skill-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .key-badge {
+    background: #1E293B;
+    border: 1px solid #475569;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #38BDF8;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(9, 13, 22, 0.92);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 24px;
+    z-index: 10;
+  }
+  .overlay h2 {
+    font-size: 32px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #38BDF8, #818CF8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .overlay p {
+    color: #94A3B8;
+    max-width: 520px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  #sync-status {
+    font-size: 14px;
+    font-weight: 700;
+    color: #38BDF8;
+    margin-bottom: 14px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-play {
+    background: linear-gradient(135deg, #0284C7, #4F46E5);
+    color: white;
+    border: none;
+    padding: 12px 26px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+    transition: transform 0.15s;
+  }
+  .btn-play:hover { transform: scale(1.05); }
+  .btn-share {
+    background: #1E293B;
+    color: #38BDF8;
+    border: 1px solid #38BDF8;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .btn-share:hover { background: #0F172A; }
+  #missed-box {
+    margin-top: 6px;
+    margin-bottom: 16px;
+    max-height: 125px;
+    overflow-y: auto;
+    background: rgba(30, 41, 59, 0.7);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #FCA5A5;
+    text-align: left;
+  }
+  #mobile-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
 
+<div id="game-wrapper" onclick="focusInput()">
+  <div id="hud">
+    <div class="hud-pill">⭐ Điểm: <span id="score">0</span></div>
+    <div class="hud-pill">🔥 Combo: <span id="combo">0</span></div>
+    <div class="hud-pill">🛸 Còn lại: <span id="remaining">0</span></div>
+    <div class="hud-pill">❤️ Giáp: <span id="lives">3</span></div>
+  </div>
+
+  <div id="typing-bar">Gõ phím để bắn...</div>
+
+  <div id="shop-bar">
+    <button id="btn-hint" class="skill-btn" onclick="useSkill('hint')" disabled>
+      <span class="key-badge">1</span> ⚡ Gợi ý 1 chữ (50đ)
+    </button>
+    <button id="btn-freeze" class="skill-btn" onclick="useSkill('freeze')" disabled>
+      <span class="key-badge">2</span> ❄️ Đóng băng 5s (100đ)
+    </button>
+    <button id="btn-nuke" class="skill-btn" onclick="useSkill('nuke')" disabled>
+      <span class="key-badge">3</span> 💥 Bom EMP dọn bàn (200đ)
+    </button>
+  </div>
+
+  <input id="mobile-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+
+  <div id="start-screen" class="overlay">
+    <h2>SPACE VOCAB DEFENDER</h2>
+    <p>Tàu địch mang <b>nghĩa tiếng Việt</b> đang tiến vào quỹ đạo.<br>
+    Gõ chính xác <b>từ tiếng Anh</b> để tiêu diệt và tích điểm mua <b>Trợ giúp (phím 1, 2, 3)</b>!</p>
+    <button class="btn-play" onclick="startGame()">🚀 XUẤT KÍCH NGAY</button>
+  </div>
+
+  <div id="end-screen" class="overlay" style="display: none;">
+    <h2 id="end-title">HOÀN THÀNH NHIỆM VỤ!</h2>
+    <p id="end-stats"></p>
+    <div id="sync-status">⏳ Đang đồng bộ kỷ lục lên Bảng Xếp Hạng...</div>
+    <div id="missed-box" style="display: none;"></div>
+    <div class="btn-group">
+      <button class="btn-play" onclick="startGame()">🔄 CHƠI LẠI TRẬN NÀY</button>
+      <button id="btn-copy" class="btn-share" onclick="copyShareText()">📋 Copy thành tích khoe bạn bè</button>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas" width="840" height="610"></canvas>
+</div>
+
+<script>
+const CFG = __GAME_CONFIG__;
+const WORD_LIST = CFG.words;
+const BASE_SPEED = CFG.speed;
+const SHOW_HINT = CFG.hint;
+const PLAYER_NAME = CFG.player;
+const SB_URL = CFG.sb_url;
+const SB_KEY = CFG.sb_key;
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const mobileInput = document.getElementById("mobile-input");
+
+async function autoSaveLeaderboard(finalScore, finalCombo) {
+  const statusEl = document.getElementById("sync-status");
+  if (!SB_URL || !SB_KEY || finalScore <= 0) {
+    statusEl.innerText = "ℹ️ Điểm bằng 0 nên chưa ghi danh lên Bảng Xếp Hạng.";
+    return;
+  }
+
+  try {
+    const headers = {
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + SB_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    };
+
+    const checkRes = await fetch(SB_URL + "/rest/v1/space_leaderboard?username=eq." + encodeURIComponent(PLAYER_NAME) + "&select=*", {
+      method: "GET",
+      headers: headers
+    });
+    const existing = await checkRes.json();
+
+    if (Array.isArray(existing) && existing.length > 0) {
+      const oldScore = existing[0].high_score || 0;
+      const oldCombo = existing[0].max_combo || 0;
+
+      if (finalScore > oldScore) {
+        await fetch(SB_URL + "/rest/v1/space_leaderboard?username=eq." + encodeURIComponent(PLAYER_NAME), {
+          method: "PATCH",
+          headers: headers,
+          body: JSON.stringify({
+            high_score: finalScore,
+            max_combo: Math.max(finalCombo, oldCombo),
+            updated_at: new Date().toISOString()
+          })
+        });
+        statusEl.style.color = "#4ADE80";
+        statusEl.style.borderColor = "#4ADE80";
+        statusEl.innerText = "🎉 PHÁ KỶ LỤC CÁ NHÂN! Đã tự động cập nhật " + finalScore.toLocaleString() + " đ lên Top!";
+      } else {
+        statusEl.style.color = "#94A3B8";
+        statusEl.style.borderColor = "#475569";
+        statusEl.innerText = "🏅 Kỷ lục cao nhất của bạn hiện là " + oldScore.toLocaleString() + " đ (giữ nguyên trên Top).";
+      }
+    } else {
+      await fetch(SB_URL + "/rest/v1/space_leaderboard", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          username: PLAYER_NAME,
+          high_score: finalScore,
+          max_combo: finalCombo
+        })
+      });
+      statusEl.style.color = "#4ADE80";
+      statusEl.style.borderColor = "#4ADE80";
+      statusEl.innerText = "🚀 Đã tự động ghi danh " + finalScore.toLocaleString() + " đ lên Bảng Xếp Hạng!";
+    }
+  } catch (err) {
+    statusEl.style.color = "#FCA5A5";
+    statusEl.innerText = "⚠️ Không thể tự động đồng bộ Bảng Xếp Hạng lúc này.";
+  }
+}
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  const now = audioCtx.currentTime;
+  if (type === 'laser') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.start(now);
+    osc.stop(now + 0.08);
+  } else if (type === 'boom') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } else if (type === 'skill') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.22);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc.start(now);
+    osc.stop(now + 0.22);
+  } else if (type === 'error') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.linearRampToValueAtTime(110, now + 0.1);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }
+}
+
+let stars = [];
+for (let i = 0; i < 90; i++) {
+  stars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.8 + 0.4,
+    s: Math.random() * 0.4 + 0.1
+  });
+}
+
+let enemies = [];
+let lasers = [];
+let particles = [];
+let spawnQueue = [];
+let lockedEnemy = null;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let lives = 3;
+let isRunning = false;
+let spawnTimer = 0;
+let shipAngle = -Math.PI / 2;
+let missedWords = [];
+let correctChars = 0;
+let totalChars = 0;
+let freezeFrames = 0;
+let lastShareSummary = "";
+
+function focusInput() {
+  mobileInput.focus();
+}
+
+function formatHint(word, typedCount) {
+  let out = "";
+  for (let i = 0; i < word.length; i++) {
+    if (i < typedCount) {
+      out += word[i];
+    } else if (word[i] === " ") {
+      out += "   ";
+    } else if (word[i] === "-") {
+      out += "-";
+    } else if (SHOW_HINT && (i === 0 || i === word.length - 1)) {
+      out += word[i];
+    } else if (SHOW_HINT) {
+      out += "_";
+    } else {
+      out += "•";
+    }
+    if (i < word.length - 1) out += " ";
+  }
+  return out;
+}
+
+function startGame() {
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("end-screen").style.display = "none";
+  document.getElementById("btn-copy").innerText = "📋 Copy thành tích khoe bạn bè";
+  
+  spawnQueue = [...WORD_LIST].sort(() => Math.random() - 0.5);
+  enemies = [];
+  lasers = [];
+  particles = [];
+  missedWords = [];
+  lockedEnemy = null;
+  score = 0;
+  combo = 0;
+  maxCombo = 0;
+  lives = 3;
+  correctChars = 0;
+  totalChars = 0;
+  freezeFrames = 0;
+  spawnTimer = 999;
+  isRunning = true;
+  
+  updateHUD();
+  document.getElementById("typing-bar").innerText = "Sẵn sàng khai hỏa...";
+  focusInput();
+  requestAnimationFrame(gameLoop);
+}
+
+function spawnEnemy() {
+  if (spawnQueue.length === 0) return;
+  const item = spawnQueue.pop();
+  const margin = 120;
+  const x = margin + Math.random() * (canvas.width - margin * 2);
+  enemies.push({
+    en: item.en,
+    enLower: item.en.toLowerCase(),
+    vi: item.vi,
+    typed: 0,
+    x: x,
+    y: -30,
+    speed: BASE_SPEED + (Math.random() * 0.15)
+  });
+}
+
+function createExplosion(x, y, color) {
+  for (let i = 0; i < 24; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 4 + 1;
+    particles.push({
+      x: x,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      color: color
+    });
+  }
+}
+
+function updateHUD() {
+  document.getElementById("score").innerText = score;
+  document.getElementById("combo").innerText = combo;
+  document.getElementById("remaining").innerText = spawnQueue.length + enemies.length;
+  document.getElementById("lives").innerText = "❤️".repeat(Math.max(0, lives));
+
+  const btnHint = document.getElementById("btn-hint");
+  const btnFreeze = document.getElementById("btn-freeze");
+  const btnNuke = document.getElementById("btn-nuke");
+
+  btnHint.disabled = score < 50 || enemies.length === 0;
+  btnFreeze.disabled = score < 100 || freezeFrames > 0;
+  btnNuke.disabled = score < 200 || enemies.length === 0;
+
+  btnHint.classList.toggle("ready", !btnHint.disabled);
+  btnFreeze.classList.toggle("ready", !btnFreeze.disabled);
+  btnNuke.classList.toggle("ready", !btnNuke.disabled);
+}
+
+function useSkill(type) {
+  if (!isRunning) return;
+  focusInput();
+
+  if (type === 'hint' && score >= 50 && enemies.length > 0) {
+    score -= 50;
+    playSound('skill');
+    if (!lockedEnemy || !enemies.includes(lockedEnemy)) {
+      let sorted = [...enemies].sort((a, b) => b.y - a.y);
+      lockedEnemy = sorted[0];
+    }
+    const nextChar = lockedEnemy.enLower[lockedEnemy.typed];
+    handleKeyInput(nextChar, true);
+  } 
+  else if (type === 'freeze' && score >= 100 && freezeFrames <= 0) {
+    score -= 100;
+    freezeFrames = 300;
+    playSound('skill');
+    document.getElementById("typing-bar").innerText = "❄️ ĐÓNG BĂNG VŨ TRỤ (5s)!";
+  } 
+  else if (type === 'nuke' && score >= 200 && enemies.length > 0) {
+    score -= 200;
+    playSound('boom');
+    for (let e of enemies) {
+      createExplosion(e.x, e.y, "#A855F7");
+      score += 30;
+    }
+    enemies = [];
+    lockedEnemy = null;
+    document.getElementById("typing-bar").innerText = "💥 BOM EMP QUÉT SẠCH MÀN HÌNH!";
+  }
+  updateHUD();
+}
+
+function handleKeyInput(char, isFromSkill = false) {
+  if (!isRunning) return;
+
+  if (!isFromSkill) {
+    if (char === '1') { useSkill('hint'); return; }
+    if (char === '2') { useSkill('freeze'); return; }
+    if (char === '3') { useSkill('nuke'); return; }
+  }
+
+  const key = char.toLowerCase();
+  if (!/^[a-z\s\-']$/.test(key)) return;
+
+  if (!isFromSkill) totalChars++;
+
+  if (!lockedEnemy || !enemies.includes(lockedEnemy)) {
+    lockedEnemy = null;
+    let candidates = enemies.filter(e => e.enLower[0] === key);
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.y - a.y);
+      lockedEnemy = candidates[0];
+    }
+  }
+
+  if (lockedEnemy) {
+    const expected = lockedEnemy.enLower[lockedEnemy.typed];
+    if (key === expected) {
+      if (!isFromSkill) correctChars++;
+      lockedEnemy.typed++;
+      playSound('laser');
+
+      const shipX = canvas.width / 2;
+      const shipY = canvas.height - 105;
+      shipAngle = Math.atan2(lockedEnemy.y - shipY, lockedEnemy.x - shipX);
+      lasers.push({ x1: shipX, y1: shipY, x2: lockedEnemy.x, y2: lockedEnemy.y, life: 1.0 });
+      createExplosion(lockedEnemy.x, lockedEnemy.y, isFromSkill ? "#FACC15" : "#38BDF8");
+
+      const typedPart = lockedEnemy.en.slice(0, lockedEnemy.typed);
+      document.getElementById("typing-bar").innerText = typedPart.toUpperCase();
+
+      if (lockedEnemy.typed >= lockedEnemy.en.length) {
+        playSound('boom');
+        createExplosion(lockedEnemy.x, lockedEnemy.y, "#F59E0B");
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        score += (lockedEnemy.en.length * 10) + (combo * 5);
+        enemies = enemies.filter(e => e !== lockedEnemy);
+        lockedEnemy = null;
+        document.getElementById("typing-bar").innerText = "🎯 MỤC TIÊU BỊ HẠ!";
+      }
+    } else {
+      combo = 0;
+      playSound('error');
+    }
+  } else {
+    combo = 0;
+    playSound('error');
+  }
+  updateHUD();
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Backspace") {
+    lockedEnemy = null;
+    document.getElementById("typing-bar").innerText = "Đã hủy khóa mục tiêu";
+    return;
+  }
+  if (e.key.length === 1) {
+    e.preventDefault();
+    handleKeyInput(e.key);
+  }
+});
+
+mobileInput.addEventListener("input", (e) => {
+  const val = mobileInput.value;
+  if (val.length > 0) {
+    handleKeyInput(val[val.length - 1]);
+    mobileInput.value = "";
+  }
+});
+
+function copyShareText() {
+  navigator.clipboard.writeText(lastShareSummary);
+  document.getElementById("btn-copy").innerText = "✅ Đã copy! Dán gửi bạn bè ngay";
+}
+
+function endGame(isVictory) {
+  isRunning = false;
+  const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+  document.getElementById("end-title").innerText = isVictory ? "🏆 CHIẾN THẮNG TUYỆT ĐỐI!" : "💥 TÀU CHỦ BỊ PHÁ HỦY!";
+  document.getElementById("end-stats").innerHTML = 
+    `Điểm số: <b>${score}</b>  |  Max Combo: <b>${maxCombo}</b>  |  Độ chính xác: <b>${accuracy}%</b>`;
+
+  lastShareSummary = `🚀 [${PLAYER_NAME}] vừa đạt ${score} điểm (Max Combo x${maxCombo} | Chính xác ${accuracy}%) tại Space Vocab Defender! Bạn phá nổi kỷ lục này không?`;
+
+  const missedBox = document.getElementById("missed-box");
+  if (missedWords.length > 0) {
+    missedBox.style.display = "block";
+    missedBox.innerHTML = "<b>⚠️ Các từ để lọt cần ôn lại:</b><br>" + 
+      missedWords.map(w => `• <b>${w.en}</b>: ${w.vi}`).join("<br>");
+  } else {
+    missedBox.style.display = "none";
+  }
+  document.getElementById("end-screen").style.display = "flex";
+
+  autoSaveLeaderboard(score, maxCombo);
+}
+
+function gameLoop() {
+  if (!isRunning) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (freezeFrames > 0) {
+    freezeFrames--;
+    ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (freezeFrames === 0) updateHUD();
+  }
+
+  const speedMultiplier = freezeFrames > 0 ? 0.3 : 1.0;
+
+  ctx.fillStyle = "#FFFFFF";
+  for (let s of stars) {
+    s.y += s.s * speedMultiplier;
+    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1.0;
+
+  spawnTimer += speedMultiplier;
+  const maxOnScreen = 4;
+  if (spawnTimer > 150 && enemies.length < maxOnScreen && spawnQueue.length > 0) {
+    spawnEnemy();
+    spawnTimer = 0;
+    updateHUD();
+  }
+
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let e = enemies[i];
+    e.y += e.speed * speedMultiplier;
+
+    if (e.y > canvas.height - 125) {
+      playSound('boom');
+      createExplosion(e.x, e.y, "#EF4444");
+      missedWords.push({ en: e.en, vi: e.vi });
+      if (lockedEnemy === e) lockedEnemy = null;
+      enemies.splice(i, 1);
+      lives--;
+      combo = 0;
+      updateHUD();
+      if (lives <= 0) {
+        endGame(false);
+        return;
+      }
+      continue;
+    }
+
+    const isLocked = (lockedEnemy === e);
+
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.fillStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#EF4444");
+    ctx.beginPath();
+    ctx.moveTo(0, 16);
+    ctx.lineTo(-18, -10);
+    ctx.lineTo(0, -4);
+    ctx.lineTo(18, -10);
+    ctx.closePath();
+    ctx.fill();
+
+    const hintText = formatHint(e.en, e.typed);
+    ctx.font = "bold 15px 'Segoe UI', sans-serif";
+    const viWidth = ctx.measureText(e.vi).width;
+    ctx.font = "bold 14px monospace";
+    const hintWidth = ctx.measureText(hintText).width;
+    const boxW = Math.max(viWidth, hintWidth) + 26;
+    const boxH = 46;
+
+    ctx.fillStyle = isLocked ? "rgba(30, 41, 59, 0.95)" : "rgba(15, 23, 42, 0.85)";
+    ctx.strokeStyle = freezeFrames > 0 ? "#38BDF8" : (isLocked ? "#F59E0B" : "#475569");
+    ctx.lineWidth = isLocked ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(-boxW / 2, -62, boxW, boxH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#F8FAFC";
+    ctx.font = "bold 14px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(e.vi, 0, -43);
+
+    ctx.fillStyle = isLocked ? "#38BDF8" : "#94A3B8";
+    ctx.font = "bold 14px monospace";
+    ctx.fillText(hintText, 0, -24);
+    ctx.restore();
+  }
+
+  for (let i = lasers.length - 1; i >= 0; i--) {
+    let l = lasers[i];
+    ctx.strokeStyle = `rgba(56, 189, 248, ${l.life})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(l.x1, l.y1);
+    ctx.lineTo(l.x2, l.y2);
+    ctx.stroke();
+    l.life -= 0.12;
+    if (l.life <= 0) lasers.splice(i, 1);
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.04;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillRect(p.x, p.y, 3, 3);
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  ctx.globalAlpha = 1.0;
+
+  const shipX = canvas.width / 2;
+  const shipY = canvas.height - 105;
+  ctx.save();
+  ctx.translate(shipX, shipY);
+  ctx.rotate(shipAngle + Math.PI / 2);
+  ctx.fillStyle = "#38BDF8";
+  ctx.beginPath();
+  ctx.moveTo(0, -22);
+  ctx.lineTo(-16, 16);
+  ctx.lineTo(0, 10);
+  ctx.lineTo(16, 16);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  if (spawnQueue.length === 0 && enemies.length === 0) {
+    endGame(true);
+    return;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
