@@ -4,7 +4,8 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Library | Vocabulary Trainer", page_icon="📚", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("7_📚_Library")
 # --- CUSTOM CSS: GIAO DIỆN CHUẨN MODERN SAAS ---
 st.markdown("""
 <style>
