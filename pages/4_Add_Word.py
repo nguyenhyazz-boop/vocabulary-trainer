@@ -14,12 +14,12 @@ def auto_analyze_word(word: str, pos: str):
     prompt = (
         f"Bạn là trợ lý học từ vựng tiếng Anh cho học sinh Việt Nam ôn thi THPT. "
         f"Hãy phân tích từ/cụm từ tiếng Anh: '{word}' với loại từ '{pos}'. "
-        f"Trả về DUY NHẤT một chuỗi JSON hợp lệ (không markdown, không giải thích thêm) theo định dạng:\n"
+        f"Trả về DUY NHẤT một chuỗi JSON hợp lệ (không giải thích thêm) theo định dạng:\n"
         f'{{"meaning": "nghĩa tiếng Việt ngắn gọn, sát nghĩa nhất (tối đa 6-8 từ)", '
         f'"example": "1 câu ví dụ tiếng Anh cơ bản, tự nhiên có chứa chính xác từ/cụm từ đó"}}'
     )
 
-    # Ưu tiên 1: Groq API (siêu nhanh)
+    # Ưu tiên 1: Groq API
     if groq_key:
         try:
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -39,48 +39,79 @@ def auto_analyze_word(word: str, pos: str):
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                content = data["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
+                parsed = json.loads(data["choices"][0]["message"]["content"])
                 return parsed.get("meaning", ""), parsed.get("example", ""), None
-        except Exception as e:
-            return None, None, f"Lỗi Groq API: {e}"
+        except Exception:
+            pass
 
-   # Ưu tiên 2: Gemini API (Tự động tìm model khả dụng của API Key)
+    # Ưu tiên 2: Gemini API (Lọc đúng model text chuẩn & thử lần lượt)
     if gemini_key:
         try:
             list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
             with urllib.request.urlopen(list_url, timeout=10) as r:
                 models_data = json.loads(r.read().decode("utf-8"))
 
-            valid_models = [
-                m["name"] for m in models_data.get("models", [])
-                if "generateContent" in m.get("supportedGenerationMethods", [])
-                and "flash" in m["name"].lower()
-            ]
-            if not valid_models:
-                valid_models = [
-                    m["name"] for m in models_data.get("models", [])
-                    if "generateContent" in m.get("supportedGenerationMethods", [])
-                ]
+            exclude_kw = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
+            candidates = []
+            for m in models_data.get("models", []):
+                m_name = m.get("name", "")
+                if "generateContent" in m.get("supportedGenerationMethods", []):
+                    if "gemini" in m_name.lower() and not any(k in m_name.lower() for k in exclude_kw):
+                        candidates.append(m_name)
 
-            model_path = valid_models[0]  # Ví dụ: "models/gemini-2.0-flash"
-            url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={gemini_key}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}
-            }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                content = data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(content)
-                return parsed.get("meaning", ""), parsed.get("example", ""), None
-        except Exception as e:
-            return None, None, f"Lỗi Gemini API: {e}"
+            # Ưu tiên các bản flash/pro ổn định lên đầu
+            candidates.sort(key=lambda x: (0 if "flash" in x else 1, x))
+
+            for model_path in candidates[:4]:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={gemini_key}"
+                    payload = {
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.3}
+                    }
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+                        if json_match:
+                            parsed = json.loads(json_match.group(0))
+                            return parsed.get("meaning", ""), parsed.get("example", ""), None
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    # Ưu tiên 3 (Dự phòng 100% chạy được): Free Dictionary API + Google Translate
+    try:
+        from deep_translator import GoogleTranslator
+        vi_meaning = GoogleTranslator(source="en", target="vi").translate(word)
+        ex_sentence = ""
+        try:
+            dict_url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(word.lower())}"
+            with urllib.request.urlopen(dict_url, timeout=8) as dr:
+                dict_data = json.loads(dr.read().decode("utf-8"))
+                for entry in dict_data:
+                    for m in entry.get("meanings", []):
+                        for d in m.get("definitions", []):
+                            if d.get("example"):
+                                ex_sentence = d["example"]
+                                break
+                        if ex_sentence:
+                            break
+                    if ex_sentence:
+                        break
+        except Exception:
+            pass
+        if not ex_sentence:
+            ex_sentence = f"We need to learn how to use '{word}' correctly in a sentence."
+        return vi_meaning, ex_sentence, None
+    except Exception as e:
+        return None, None, f"Không thể phân tích từ vựng lúc này: {e}"
 # --- CUSTOM CSS: MODERN SAAS STYLING ---
 st.markdown("""
 <style>
