@@ -45,10 +45,26 @@ def auto_analyze_word(word: str, pos: str):
         except Exception as e:
             return None, None, f"Lỗi Groq API: {e}"
 
-    # Ưu tiên 2: Gemini API
+   # Ưu tiên 2: Gemini API (Tự động tìm model khả dụng của API Key)
     if gemini_key:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
+            with urllib.request.urlopen(list_url, timeout=10) as r:
+                models_data = json.loads(r.read().decode("utf-8"))
+
+            valid_models = [
+                m["name"] for m in models_data.get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+                and "flash" in m["name"].lower()
+            ]
+            if not valid_models:
+                valid_models = [
+                    m["name"] for m in models_data.get("models", [])
+                    if "generateContent" in m.get("supportedGenerationMethods", [])
+                ]
+
+            model_path = valid_models[0]  # Ví dụ: "models/gemini-2.0-flash"
+            url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}
@@ -65,9 +81,6 @@ def auto_analyze_word(word: str, pos: str):
                 return parsed.get("meaning", ""), parsed.get("example", ""), None
         except Exception as e:
             return None, None, f"Lỗi Gemini API: {e}"
-
-    return None, None, "Chưa tìm thấy GROQ_API_KEY hoặc GEMINI_API_KEY trong Streamlit Secrets!"
-
 # --- CUSTOM CSS: MODERN SAAS STYLING ---
 st.markdown("""
 <style>
