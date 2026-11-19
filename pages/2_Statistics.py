@@ -3,7 +3,8 @@ import pandas as pd
 from utils.data_manager import load_data
 
 st.set_page_config(page_title="Statistics - Vocabulary Trainer", page_icon="📊", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("2_Statistics")
 st.title("📊 Thống kê học tập")
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
