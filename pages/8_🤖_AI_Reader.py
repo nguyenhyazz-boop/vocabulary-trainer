@@ -8,7 +8,8 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="AI Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("8_🤖_AI_Reader")
 # --- HÀM TỰ ĐỘNG BÔI ĐẬM TỪ VỰNG TRONG CÂU VÍ DỤ ---
 def highlight_word_in_example(word: str, example: str) -> str:
     if not word or not example:
