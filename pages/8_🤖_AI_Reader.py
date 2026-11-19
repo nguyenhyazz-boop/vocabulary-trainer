@@ -21,14 +21,14 @@ def highlight_word_in_example(word: str, example: str) -> str:
     pattern = re.compile(re.escape(clean_w), re.IGNORECASE)
     return pattern.sub(lambda m: f"**{m.group(0)}**", example)
 
-# --- HÀM TỰ ĐỘNG PHÂN TÍCH NGHĨA & CÂU VÍ DỤ CHO TỪ MỚI ---
-def quick_analyze_word(word: str, pos: str, api_key: str):
-    pos_hint = pos if pos != "(Không rõ)" else "tự xác định theo ngữ cảnh phổ biến nhất"
+# --- HÀM AI TỰ PHÂN TÍCH LOẠI TỪ, NGHĨA & CÂU VÍ DỤ ---
+def quick_analyze_word(word: str, api_key: str):
     prompt = (
         f"Bạn là trợ lý học từ vựng tiếng Anh cho học sinh Việt Nam ôn thi THPT. "
-        f"Hãy phân tích từ/cụm từ tiếng Anh: '{word}' với loại từ '{pos_hint}'. "
+        f"Hãy phân tích từ/cụm từ tiếng Anh: '{word}'. "
         f"Trả về DUY NHẤT một chuỗi JSON hợp lệ (không giải thích thêm) theo định dạng:\n"
-        f'{{"meaning": "nghĩa tiếng Việt ngắn gọn, sát nghĩa nhất (tối đa 6-8 từ)", '
+        f'{{"pos": "loại từ tiếng Anh ngắn gọn (chỉ chọn 1 trong: Noun, Verb, Adjective, Adverb, Phrase, Preposition, Other)", '
+        f'"meaning": "nghĩa tiếng Việt ngắn gọn, sát nghĩa nhất (tối đa 6-8 từ)", '
         f'"example": "1 câu ví dụ tiếng Anh cơ bản, tự nhiên có chứa chính xác từ/cụm từ đó"}}'
     )
 
@@ -59,7 +59,12 @@ def quick_analyze_word(word: str, pos: str, api_key: str):
                         json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
                         if json_match:
                             parsed = json.loads(json_match.group(0))
-                            return parsed.get("meaning", ""), parsed.get("example", ""), None
+                            return (
+                                parsed.get("pos", "Other"),
+                                parsed.get("meaning", ""),
+                                parsed.get("example", ""),
+                                None
+                            )
                 except Exception:
                     continue
         except Exception:
@@ -70,12 +75,15 @@ def quick_analyze_word(word: str, pos: str, api_key: str):
         from deep_translator import GoogleTranslator
         vi_meaning = GoogleTranslator(source="en", target="vi").translate(word)
         ex_sentence = ""
+        detected_pos = "Phrase" if " " in word.strip() else "Other"
         try:
             dict_url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(word.lower())}"
             dr = requests.get(dict_url, timeout=8)
             if dr.status_code == 200:
                 for entry in dr.json():
                     for m in entry.get("meanings", []):
+                        if m.get("partOfSpeech") and detected_pos == "Other":
+                            detected_pos = m["partOfSpeech"].capitalize()
                         for d in m.get("definitions", []):
                             if d.get("example"):
                                 ex_sentence = d["example"]
@@ -88,9 +96,9 @@ def quick_analyze_word(word: str, pos: str, api_key: str):
             pass
         if not ex_sentence:
             ex_sentence = f"We need to learn how to use '{word}' correctly in a sentence."
-        return vi_meaning, ex_sentence, None
+        return detected_pos, vi_meaning, ex_sentence, None
     except Exception as e:
-        return None, None, f"Không thể phân tích từ vựng lúc này: {e}"
+        return None, None, None, f"Không thể phân tích từ vựng lúc này: {e}"
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -363,38 +371,23 @@ with tab_create:
                 st.markdown(latest_item["content"])
 
             with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
-                col_w1, col_w2, col_w3 = st.columns([3, 2, 2])
+                col_w1, col_w2 = st.columns([3, 1.5])
                 with col_w1:
                     new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent, take action")
                 with col_w2:
-                    new_pos = st.selectbox(
-                        "Loại từ:",
-                        [
-                            "(Không rõ)",
-                            "Noun (n)",
-                            "Verb (v)",
-                            "Adjective (adj)",
-                            "Adverb (adv)",
-                            "Phrase / Idiom",
-                            "Preposition (prep)",
-                            "Other"
-                        ],
-                        key="add_quick_pos"
-                    )
-                with col_w3:
                     target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
 
-                if st.button("✨ Phân tích & Lưu vào Kho từ vựng", type="primary", use_container_width=True):
+                if st.button("✨ AI Phân tích & Lưu vào Kho từ vựng", type="primary", use_container_width=True):
                     if not new_w.strip():
                         st.warning("Vui lòng nhập Từ / Cụm từ mới!")
                     else:
-                        with st.spinner("Đang tự động dịch nghĩa & tạo câu ví dụ..."):
-                            ai_meaning, ai_example, err = quick_analyze_word(new_w.strip(), new_pos, clean_api_key)
+                        with st.spinner("AI đang tự xác định loại từ, dịch nghĩa & tạo câu ví dụ..."):
+                            ai_pos, ai_meaning, ai_example, err = quick_analyze_word(new_w.strip(), clean_api_key)
                             if err or not ai_meaning:
                                 st.error(err or "Không thể phân tích từ vựng lúc này!")
                             else:
                                 clean_word = new_w.strip().lower()
-                                clean_pos = "" if new_pos == "(Không rõ)" else new_pos.split(" ")[0]
+                                clean_pos = ai_pos.strip() if ai_pos else "Other"
                                 final_example = highlight_word_in_example(new_w.strip(), ai_example)
 
                                 if target_repo == "Collocations":
@@ -412,7 +405,7 @@ with tab_create:
                                     "wrong": repo_data.get(clean_word, {}).get("wrong", 0)
                                 }
                                 save_data(repo_data, target_file)
-                                st.success(f"Đã phân tích & lưu '{clean_word}' ({ai_meaning.strip()}) vào kho {target_repo}!")
+                                st.success(f"Đã lưu '{clean_word}' [{clean_pos}] — {ai_meaning.strip()} vào kho {target_repo}!")
 
 with tab_history:
     st.subheader("Danh sách bài đọc AI đã lưu")
