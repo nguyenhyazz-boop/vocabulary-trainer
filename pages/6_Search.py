@@ -2,7 +2,8 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Search & Edit | Vocabulary Trainer", page_icon="🔍", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("6_Search")
 # --- CUSTOM CSS: ORGANIC & CHILL SAAS STYLING ---
 st.markdown("""
 <style>
