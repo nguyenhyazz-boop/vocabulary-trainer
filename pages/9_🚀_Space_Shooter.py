@@ -7,7 +7,8 @@ from supabase import create_client
 from utils.data_manager import load_data
 
 st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="🚀", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("9_🚀_Space_Shooter")
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
