@@ -4,7 +4,8 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Study | Vocabulary Trainer", page_icon="📖", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("1_Study")
 # --- CUSTOM CSS: FLASHCARD BÓP GỌN & SIDEBAR PHÓNG TO ---
 st.markdown("""
 <style>
