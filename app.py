@@ -210,7 +210,7 @@ if st.session_state.logged_in:
 
     user_high_score, leaderboard = fetch_space_stats(username)
 
-    # Top Stats Pills giống góc trên bên phải của mẫu
+    # Top Stats Pills
     st.markdown(f"""
     <div class="top-bar">
         <span class="stat-pill"><span class="dot-orange"></span> {user_high_score:,} XP</span>
@@ -280,7 +280,7 @@ if st.session_state.logged_in:
         st.progress(min(accuracy / 100, 1.0))
         st.write("")
 
-        # 4 hàng lối tắt gọn gàng
+        # 4 hàng lối tắt gọn gàng (đã cập nhật đúng tên file không icon)
         r1, b1 = st.columns([3.5, 1])
         with r1:
             st.markdown("""
@@ -309,7 +309,7 @@ if st.session_state.logged_in:
         with b2:
             st.write("")
             if st.button("Open", key="btn_ai", use_container_width=True):
-                st.switch_page("pages/8_🤖_AI_Reader.py")
+                st.switch_page("pages/8_AI_Reader.py")
 
         r3, b3 = st.columns([3.5, 1])
         with r3:
@@ -324,7 +324,7 @@ if st.session_state.logged_in:
         with b3:
             st.write("")
             if st.button("Open", key="btn_vid", use_container_width=True):
-                st.switch_page("pages/10_🎬_Video_Vocab.py")
+                st.switch_page("pages/10_Video_Vocab.py")
 
         r4, b4 = st.columns([3.5, 1])
         with r4:
@@ -339,7 +339,7 @@ if st.session_state.logged_in:
         with b4:
             st.write("")
             if st.button("Play", key="btn_space", use_container_width=True, type="primary"):
-                st.switch_page("pages/9_🚀_Space_Shooter.py")
+                st.switch_page("pages/9_Space_Shooter.py")
 
     with col_side:
         st.markdown("""
