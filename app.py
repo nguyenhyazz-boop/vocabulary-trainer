@@ -4,7 +4,8 @@ from supabase import create_client
 from utils.data_manager import load_data, register_user, authenticate_user
 
 st.set_page_config(page_title="Vocabulary Trainer | Dashboard", page_icon="📖", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("dashboard")
 # --- KẾT NỐI SUPABASE ĐỂ LẤY KỶ LỤC GAME ---
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
