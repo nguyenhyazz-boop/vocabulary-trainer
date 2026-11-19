@@ -6,7 +6,8 @@ from deep_translator import GoogleTranslator
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Video Vocab | Vocabulary Trainer", page_icon="🎬", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("10_🎬_Video_Vocab")
 # Danh sách từ chức năng cơ bản (Stopwords) để lọc ra từ vựng đáng học
 STOPWORDS = {
     "the", "and", "that", "have", "for", "not", "with", "you", "this", "but",
