@@ -4,3 +4,5 @@ bcrypt
 google-generativeai
 supabase
 httpx
+youtube-transcript-api
+deep-translator
