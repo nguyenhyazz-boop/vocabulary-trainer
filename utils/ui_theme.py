@@ -3,99 +3,65 @@ import streamlit as st
 def apply_global_theme(active_page: str = ""):
     st.markdown("""
     <style>
-        /* 1. Ẩn thanh công cụ thừa của Streamlit (Deploy, Menu 3 chấm, Footer) */
-        #MainMenu { visibility: hidden; }
-        footer { visibility: hidden; }
-        [data-testid="stDeployButton"] { display: none !important; }
-        header[data-testid="stHeader"] {
-            background: rgba(248, 250, 252, 0.85);
-            backdrop-filter: blur(8px);
-        }
+        /* 1. Brand Header ở đỉnh Sidebar */
+[data-testid="stSidebarNav"]::before {
+    content: "VOCAB TRAINER";
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #4F46E5;
+    padding: 0.6rem 1.2rem 0.8rem 1.2rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid #F1F5F9;
+}
 
-        /* 2. Tùy chỉnh thanh Sidebar hiện đại */
-        [data-testid="stSidebar"] {
-            background-color: #FFFFFF;
-            border-right: 1px solid #E2E8F0;
-        }
-        [data-testid="stSidebarNav"] {
-            padding-top: 0.75rem;
-        }
-        [data-testid="stSidebarNav"] span {
-            font-size: 0.95rem !important;
-            font-weight: 600 !important;
-            color: #334155;
-        }
-        [data-testid="stSidebarNav"] a {
-            border-radius: 10px !important;
-            margin: 3px 10px !important;
-            padding: 8px 12px !important;
-            transition: all 0.15s ease;
-        }
-        [data-testid="stSidebarNav"] a:hover {
-            background-color: #EEF2FF !important;
-            color: #4F46E5 !important;
-            transform: translateX(3px);
-        }
-        [data-testid="stSidebarNav"] a[aria-current="page"] {
-            background: linear-gradient(90deg, #EEF2FF 0%, #E0E7FF 100%) !important;
-            color: #4F46E5 !important;
-            border-left: 3px solid #4F46E5;
-        }
+/* 2. Thu gọn khoảng cách & tinh chỉnh font chữ thuần kiểu Linear/Notion */
+[data-testid="stSidebarNav"] li {
+    margin-bottom: 1px !important;
+}
+[data-testid="stSidebarNav"] a {
+    padding: 7px 14px !important;
+    margin: 2px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.15s ease;
+}
+[data-testid="stSidebarNav"] a span {
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: #475569 !important;
+}
+[data-testid="stSidebarNav"] a:hover {
+    background-color: #F1F5F9 !important;
+}
+[data-testid="stSidebarNav"] a:hover span {
+    color: #0F172A !important;
+}
 
-        /* 3. Bo góc mềm mại & nâng cấp Input, Selectbox, Button */
-        .stButton > button {
-            border-radius: 10px !important;
-            font-weight: 600 !important;
-            padding: 0.5rem 1rem !important;
-            transition: all 0.15s ease !important;
-        }
-        .stButton > button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
-        }
-        [data-baseweb="input"], [data-baseweb="select"] > div, textarea {
-            border-radius: 10px !important;
-            border-color: #CBD5E1 !important;
-        }
-        [data-baseweb="input"]:focus-within, textarea:focus {
-            border-color: #4F46E5 !important;
-            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) !important;
-        }
+/* Mục đang chọn: Nền xanh nhạt, chữ đậm sắc nét */
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+    background-color: #EEF2FF !important;
+    border-left: none !important;
+}
+[data-testid="stSidebarNav"] a[aria-current="page"] span {
+    color: #4F46E5 !important;
+    font-weight: 700 !important;
+}
 
-        /* 4. Làm đẹp Tabs & Expander */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-            background-color: #F1F5F9;
-            padding: 5px;
-            border-radius: 12px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-            padding: 6px 16px !important;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #FFFFFF !important;
-            color: #4F46E5 !important;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-        }
-        [data-testid="stExpander"] {
-            background-color: #FFFFFF;
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 12px !important;
-        }
-
-        /* 5. Tối ưu giao diện trên điện thoại (Mobile Responsive) */
-        @media (max-width: 768px) {
-            .main .block-container {
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-                padding-top: 1.2rem !important;
-            }
-            h1, .app-title {
-                font-size: 1.45rem !important;
-            }
-        }
+/* 3. Đổi chữ "app" thành "Dashboard" sạch sẽ */
+[data-testid="stSidebarNav"] li:first-child a span {
+    display: none !important;
+}
+[data-testid="stSidebarNav"] li:first-child a::after {
+    content: "Dashboard";
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+}
+[data-testid="stSidebarNav"] li:first-child a[aria-current="page"]::after {
+    color: #4F46E5;
+    font-weight: 700;
+}
     </style>
     """, unsafe_allow_html=True)
 
