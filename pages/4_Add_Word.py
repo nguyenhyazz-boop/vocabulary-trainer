@@ -6,7 +6,8 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Add Word | Vocabulary Trainer", page_icon="📝", layout="wide")
-
+from utils.ui_theme import apply_global_theme
+apply_global_theme("4_Add_Word")
 # --- HÀM GỌI AI TỰ ĐỘNG PHÂN TÍCH NGHĨA & VÍ DỤ ---
 def auto_analyze_word(word: str, pos: str):
     groq_key = st.secrets.get("GROQ_API_KEY", "")
