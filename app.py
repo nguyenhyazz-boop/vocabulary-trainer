@@ -1,4 +1,5 @@
-import streamlit as st
+from utils.ui_theme import apply_global_theme
+apply_global_theme("dashboard")import streamlit as st
 from supabase import create_client
 from utils.data_manager import load_data, register_user, authenticate_user
 
