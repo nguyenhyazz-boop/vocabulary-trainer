@@ -1,4 +1,6 @@
 import random
+import re
+import urllib.parse
 import requests
 import datetime
 import json
@@ -6,6 +8,89 @@ import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="AI Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
+
+# --- HÀM TỰ ĐỘNG BÔI ĐẬM TỪ VỰNG TRONG CÂU VÍ DỤ ---
+def highlight_word_in_example(word: str, example: str) -> str:
+    if not word or not example:
+        return example
+    clean_w = word.strip()
+    if not clean_w:
+        return example
+    if f"**{clean_w.lower()}**" in example.lower():
+        return example
+    pattern = re.compile(re.escape(clean_w), re.IGNORECASE)
+    return pattern.sub(lambda m: f"**{m.group(0)}**", example)
+
+# --- HÀM TỰ ĐỘNG PHÂN TÍCH NGHĨA & CÂU VÍ DỤ CHO TỪ MỚI ---
+def quick_analyze_word(word: str, pos: str, api_key: str):
+    pos_hint = pos if pos != "(Không rõ)" else "tự xác định theo ngữ cảnh phổ biến nhất"
+    prompt = (
+        f"Bạn là trợ lý học từ vựng tiếng Anh cho học sinh Việt Nam ôn thi THPT. "
+        f"Hãy phân tích từ/cụm từ tiếng Anh: '{word}' với loại từ '{pos_hint}'. "
+        f"Trả về DUY NHẤT một chuỗi JSON hợp lệ (không giải thích thêm) theo định dạng:\n"
+        f'{{"meaning": "nghĩa tiếng Việt ngắn gọn, sát nghĩa nhất (tối đa 6-8 từ)", '
+        f'"example": "1 câu ví dụ tiếng Anh cơ bản, tự nhiên có chứa chính xác từ/cụm từ đó"}}'
+    )
+
+    if api_key:
+        try:
+            list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+            list_res = requests.get(list_url, timeout=10)
+            exclude_kw = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
+            candidates = []
+            if list_res.status_code == 200:
+                for m in list_res.json().get("models", []):
+                    m_name = m.get("name", "")
+                    if "generateContent" in m.get("supportedGenerationMethods", []):
+                        if "gemini" in m_name.lower() and not any(k in m_name.lower() for k in exclude_kw):
+                            candidates.append(m_name)
+            candidates.sort(key=lambda x: (0 if "flash" in x else 1, x))
+
+            for model_path in candidates[:4]:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={api_key}"
+                    payload = {
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.3}
+                    }
+                    res = requests.post(url, json=payload, timeout=15)
+                    if res.status_code == 200:
+                        raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                        json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+                        if json_match:
+                            parsed = json.loads(json_match.group(0))
+                            return parsed.get("meaning", ""), parsed.get("example", ""), None
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    # Dự phòng bằng Google Translate + Free Dictionary API
+    try:
+        from deep_translator import GoogleTranslator
+        vi_meaning = GoogleTranslator(source="en", target="vi").translate(word)
+        ex_sentence = ""
+        try:
+            dict_url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(word.lower())}"
+            dr = requests.get(dict_url, timeout=8)
+            if dr.status_code == 200:
+                for entry in dr.json():
+                    for m in entry.get("meanings", []):
+                        for d in m.get("definitions", []):
+                            if d.get("example"):
+                                ex_sentence = d["example"]
+                                break
+                        if ex_sentence:
+                            break
+                    if ex_sentence:
+                        break
+        except Exception:
+            pass
+        if not ex_sentence:
+            ex_sentence = f"We need to learn how to use '{word}' correctly in a sentence."
+        return vi_meaning, ex_sentence, None
+    except Exception as e:
+        return None, None, f"Không thể phân tích từ vựng lúc này: {e}"
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -278,46 +363,56 @@ with tab_create:
                 st.markdown(latest_item["content"])
 
             with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
-                # Chia làm 4 cột để có chỗ chèn Loại từ
-                col_w1, col_w2, col_w3, col_w4 = st.columns([3, 3, 2, 2])
+                col_w1, col_w2, col_w3 = st.columns([3, 2, 2])
                 with col_w1:
-                    new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent")
+                    new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent, take action")
                 with col_w2:
-                    new_m = st.text_input("Nghĩa tiếng Việt:", key="add_quick_meaning", placeholder="e.g. vĩnh viễn")
-                with col_w3:
                     new_pos = st.selectbox(
-                        "Loại từ:", 
-                        ["(Không rõ)", "Danh từ (n)", "Động từ (v)", "Tính từ (adj)", "Trạng từ (adv)", "Giới từ (prep)", "Khác"], 
+                        "Loại từ:",
+                        [
+                            "(Không rõ)",
+                            "Noun (n)",
+                            "Verb (v)",
+                            "Adjective (adj)",
+                            "Adverb (adv)",
+                            "Phrase / Idiom",
+                            "Preposition (prep)",
+                            "Other"
+                        ],
                         key="add_quick_pos"
                     )
-                with col_w4:
+                with col_w3:
                     target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
 
-                if st.button("Lưu vào Kho từ vựng", type="primary", use_container_width=True):
-                    if not new_w or not new_m:
-                        st.warning("Vui lòng nhập đầy đủ Từ và Nghĩa!")
+                if st.button("✨ Phân tích & Lưu vào Kho từ vựng", type="primary", use_container_width=True):
+                    if not new_w.strip():
+                        st.warning("Vui lòng nhập Từ / Cụm từ mới!")
                     else:
-                        clean_word = new_w.strip().lower()
-                        clean_meaning = new_m.strip()
-                        clean_pos = "" if new_pos == "(Không rõ)" else new_pos
-                        
-                        if target_repo == "Collocations":
-                            target_file = f"data_collocation_{username}.json"
-                            repo_data = colloc_data
-                        else:
-                            target_file = f"data_vocab_{username}.json"
-                            repo_data = vocab_data
+                        with st.spinner("Đang tự động dịch nghĩa & tạo câu ví dụ..."):
+                            ai_meaning, ai_example, err = quick_analyze_word(new_w.strip(), new_pos, clean_api_key)
+                            if err or not ai_meaning:
+                                st.error(err or "Không thể phân tích từ vựng lúc này!")
+                            else:
+                                clean_word = new_w.strip().lower()
+                                clean_pos = "" if new_pos == "(Không rõ)" else new_pos.split(" ")[0]
+                                final_example = highlight_word_in_example(new_w.strip(), ai_example)
 
-                        # Lưu thêm trường 'pos' vào data
-                        repo_data[clean_word] = {
-                            "meaning": clean_meaning,
-                            "pos": clean_pos,
-                            "correct": 0,
-                            "wrong": 0
-                        }
-                        save_data(repo_data, target_file)
-                        st.success(f"Đã thêm từ '{clean_word}' vào kho {target_repo} thành công!")
-                        st.rerun()
+                                if target_repo == "Collocations":
+                                    target_file = f"data_collocation_{username}.json"
+                                    repo_data = colloc_data
+                                else:
+                                    target_file = f"data_vocab_{username}.json"
+                                    repo_data = vocab_data
+
+                                repo_data[clean_word] = {
+                                    "meaning": ai_meaning.strip(),
+                                    "pos": clean_pos,
+                                    "example": final_example,
+                                    "correct": repo_data.get(clean_word, {}).get("correct", 0),
+                                    "wrong": repo_data.get(clean_word, {}).get("wrong", 0)
+                                }
+                                save_data(repo_data, target_file)
+                                st.success(f"Đã phân tích & lưu '{clean_word}' ({ai_meaning.strip()}) vào kho {target_repo}!")
 
 with tab_history:
     st.subheader("Danh sách bài đọc AI đã lưu")
