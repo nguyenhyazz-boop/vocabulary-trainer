@@ -267,12 +267,43 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 6. SHOW MEANING & EXAMPLE ---
+# --- 6. SHOW MEANING & EXAMPLE (CÓ TỰ ĐỘNG TẠO VÍ DỤ NẾU THIẾU) ---
+def generate_and_save_example(word: str, meaning_str: str):
+    api_key = st.secrets.get("GEMINI_API_KEY", "") or st.secrets.get("GROQ_API_KEY", "")
+    if not api_key:
+        return ""
+    try:
+        import google.generativeai as genai
+        if st.secrets.get("GEMINI_API_KEY"):
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = f"Write 1 natural, short English example sentence using the word/phrase '{word}' (meaning: {meaning_str}). Wrap '{word}' in <b>...</b>. Return ONLY the English sentence."
+            resp = model.generate_content(prompt)
+            ex = resp.text.strip().strip('"')
+        else:
+            from groq import Groq
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            chat = client.chat.completions.create(
+                messages=[{"role": "user", "content": f"Write 1 short English example sentence using '{word}' (meaning: {meaning_str}). Wrap '{word}' in <b>...</b>. Return ONLY the sentence."}],
+                model="llama-3.1-8b-instant",
+            )
+            ex = chat.choices[0].message.content.strip().strip('"')
+
+        source = word_source_map.get(word, "vocab")
+        target_dict = colloc_data if source == "colloc" else vocab_data
+        target_file = colloc_file if source == "colloc" else vocab_file
+        if word in target_dict and isinstance(target_dict[word], dict):
+            target_dict[word]["example"] = ex
+            save_data(target_dict, target_file)
+        return ex
+    except Exception:
+        return ""
+
 with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{current_word}"):
     if isinstance(word_info, dict):
         meaning = word_info.get("meaning", word_info.get("definition", str(word_info)))
         pos_tag = word_info.get("pos", "Other")
-        example_text = word_info.get("example", "")
+        example_text = word_info.get("example", "").strip()
 
         st.markdown(f"""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; margin-bottom: 10px;">
@@ -280,6 +311,10 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
             <span style="padding: 4px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; background-color: #EFECE3; color: #57534E; text-transform: uppercase; letter-spacing: 0.5px;">{pos_tag}</span>
         </div>
         """, unsafe_allow_html=True)
+
+        if not example_text:
+            with st.spinner("Generating example sentence..."):
+                example_text = generate_and_save_example(current_word, meaning)
 
         if example_text:
             clean_ex = example_text.strip()
@@ -291,7 +326,8 @@ with st.expander("Show Meaning & Example", expanded=False, key=f"expander_{curre
 
             st.markdown(f"""
             <div style="border-top: 1px dashed #E7E2D6; padding-top: 12px; margin-top: 8px;">
-                <div style="font-size: 1.15rem; color: #57534E; font-style: italic; line-height: 1.5;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: #A8A29E; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px;">Example</div>
+                <div style="font-size: 1.15rem; color: #44403C; font-style: italic; line-height: 1.55;">
                     "{clean_ex}"
                 </div>
             </div>
