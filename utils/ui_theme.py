@@ -48,17 +48,20 @@ def apply_global_theme(active_page: str = ""):
     font-weight: 700 !important;
 }
 
-/* 3. Đổi chữ "app" thành "Dashboard" sạch sẽ */
-[data-testid="stSidebarNav"] li:first-child a span {
+/* Đổi chữ "app" thành "Dashboard" ở mọi trạng thái (active & hover) */
+[data-testid="stSidebarNav"] ul li:first-child a span,
+[data-testid="stSidebarNavItems"] li:first-child a span {
     display: none !important;
 }
-[data-testid="stSidebarNav"] li:first-child a::after {
+[data-testid="stSidebarNav"] ul li:first-child a::after,
+[data-testid="stSidebarNavItems"] li:first-child a::after {
     content: "Dashboard";
     font-size: 0.9rem;
     font-weight: 600;
     color: #475569;
 }
-[data-testid="stSidebarNav"] li:first-child a[aria-current="page"]::after {
+[data-testid="stSidebarNav"] ul li:first-child a[aria-current="page"]::after,
+[data-testid="stSidebarNavItems"] li:first-child a[aria-current="page"]::after {
     color: #4F46E5;
     font-weight: 700;
 }
