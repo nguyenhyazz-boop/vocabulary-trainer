@@ -1,5 +1,6 @@
 import json
 import re
+import urllib.parse
 import urllib.request
 import streamlit as st
 from utils.data_manager import load_data, save_data
@@ -44,7 +45,7 @@ def auto_analyze_word(word: str, pos: str):
         except Exception:
             pass
 
-    # Ưu tiên 2: Gemini API (Lọc đúng model text chuẩn & thử lần lượt)
+    # Ưu tiên 2: Gemini API
     if gemini_key:
         try:
             list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
@@ -59,7 +60,6 @@ def auto_analyze_word(word: str, pos: str):
                     if "gemini" in m_name.lower() and not any(k in m_name.lower() for k in exclude_kw):
                         candidates.append(m_name)
 
-            # Ưu tiên các bản flash/pro ổn định lên đầu
             candidates.sort(key=lambda x: (0 if "flash" in x else 1, x))
 
             for model_path in candidates[:4]:
@@ -112,6 +112,7 @@ def auto_analyze_word(word: str, pos: str):
         return vi_meaning, ex_sentence, None
     except Exception as e:
         return None, None, f"Không thể phân tích từ vựng lúc này: {e}"
+
 # --- CUSTOM CSS: MODERN SAAS STYLING ---
 st.markdown("""
 <style>
@@ -120,7 +121,6 @@ st.markdown("""
         padding-bottom: 3rem;
         max-width: 1000px;
     }
-    
     .app-header {
         margin-bottom: 2rem;
     }
@@ -134,8 +134,6 @@ st.markdown("""
         color: #64748B;
         font-size: 0.9rem;
     }
-
-    /* Thẻ Container xem trước (Live Preview Card) */
     .preview-card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
@@ -153,8 +151,6 @@ st.markdown("""
         font-weight: 700;
         color: #0F172A;
     }
-    
-    /* Badge loại từ phong cách Minimalist */
     .pos-badge {
         display: inline-block;
         padding: 2px 8px;
@@ -170,7 +166,6 @@ st.markdown("""
     .badge-adv { background-color: #F3E8FF; color: #7E22CE; }
     .badge-phrase { background-color: #FFEDD5; color: #C2410C; }
     .badge-other { background-color: #F1F5F9; color: #475569; }
-
     .preview-meaning {
         font-size: 1rem;
         color: #334155;
@@ -192,7 +187,7 @@ st.markdown("""
 st.markdown("""
 <div class="app-header">
     <div class="app-title">Add New Word</div>
-    <div class="app-subtitle">Thêm và phân loại từ vựng mới vào bộ sưu tập cá nhân (Hỗ trợ AI tự động dịch nghĩa & tạo ví dụ)</div>
+    <div class="app-subtitle">Chỉ cần nhập từ và loại từ — AI sẽ tự động dịch nghĩa, tạo ví dụ và lưu vào kho!</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -203,11 +198,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 username = st.session_state.username
 
-# Khởi tạo session_state cho các ô nhập liệu để AI có thể tự động điền giá trị
-if "add_meaning_val" not in st.session_state:
-    st.session_state.add_meaning_val = ""
-if "add_example_val" not in st.session_state:
-    st.session_state.add_example_val = ""
+if "last_saved_card" not in st.session_state:
+    st.session_state.last_saved_card = None
 
 # --- CHỌN KHO LƯU TRỮ ---
 category = st.radio(
@@ -232,18 +224,15 @@ st.write("")
 def highlight_word_in_example(word: str, example: str) -> str:
     if not word or not example:
         return example
-    
     clean_w = word.strip()
     if not clean_w:
         return example
-
     if f"**{clean_w.lower()}**" in example.lower():
         return example
-
     pattern = re.compile(re.escape(clean_w), re.IGNORECASE)
     return pattern.sub(lambda m: f"**{m.group(0)}**", example)
 
-# --- CHIA 2 CỘT: CỘT NHẬP FORM & CỘT LIVE PREVIEW ---
+# --- CHIA 2 CỘT: CỘT NHẬP FORM & CỘT KẾT QUẢ THẺ TỪ ---
 col_form, col_preview = st.columns([3, 2], gap="large")
 
 with col_form:
@@ -251,100 +240,88 @@ with col_form:
     
     new_word = st.text_input("Từ / Cụm từ Tiếng Anh", placeholder="e.g. account, take action").strip()
     
-    col_pos, col_ai = st.columns([1.3, 1])
-    with col_pos:
-        word_pos = st.selectbox(
-            "Loại từ (Part of Speech)",
-            [
-                "Noun (n)",
-                "Verb (v)",
-                "Adjective (adj)",
-                "Adverb (adv)",
-                "Phrase / Idiom",
-                "Preposition (prep)",
-                "Other"
-            ]
-        )
-    with col_ai:
-        st.write("")
-        st.write("")
-        if st.button("✨ AI Dịch & Tạo ví dụ", use_container_width=True):
-            if not new_word:
-                st.warning("Hãy nhập từ tiếng Anh trước nhé!")
-            else:
-                with st.spinner("AI đang phân tích từ vựng..."):
-                    ai_vi, ai_ex, err = auto_analyze_word(new_word, word_pos)
-                    if err:
-                        st.error(err)
-                    else:
-                        st.session_state.add_meaning_val = ai_vi
-                        st.session_state.add_example_val = ai_ex
-                        st.rerun()
-
-    new_meaning = st.text_input(
-        "Nghĩa Tiếng Việt",
-        key="add_meaning_val",
-        placeholder="e.g. câu chuyện, bản báo cáo"
-    ).strip()
-
-    example_sentence = st.text_area(
-        "Câu ví dụ (Tự động in đậm từ vựng)",
-        key="add_example_val",
-        placeholder="e.g. She gave a detailed account of the event.",
-        height=80
-    ).strip()
+    word_pos = st.selectbox(
+        "Loại từ (Part of Speech)",
+        [
+            "Noun (n)",
+            "Verb (v)",
+            "Adjective (adj)",
+            "Adverb (adv)",
+            "Phrase / Idiom",
+            "Preposition (prep)",
+            "Other"
+        ]
+    )
 
     st.write("")
-    submitted = st.button("Lưu Từ Vựng", type="primary", use_container_width=True)
+    submitted = st.button("✨ Phân Tích & Lưu Từ Vựng", type="primary", use_container_width=True)
 
-# --- CỘT LIVE PREVIEW (XEM TRƯỚC THẺ TỪ) ---
-with col_preview:
-    st.subheader("Xem trước thẻ từ")
-    
-    pos_short = word_pos.split(" ")[0].lower()
-    badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
-    
-    display_word = new_word if new_word else "Word Preview"
-    display_meaning = new_meaning if new_meaning else "Nghĩa của từ sẽ hiển thị ở đây..."
-    
-    if example_sentence and new_word:
-        auto_highlighted_preview = highlight_word_in_example(new_word, example_sentence)
-        preview_html_example = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', auto_highlighted_preview)
-        display_example = f'"{preview_html_example}"'
-    elif example_sentence:
-        display_example = f'"{example_sentence}"'
+# --- XỬ LÝ PHÂN TÍCH & LƯU DỮ LIỆU ---
+if submitted:
+    if not new_word:
+        st.error("Vui lòng nhập Từ / Cụm từ tiếng Anh!")
     else:
-        display_example = '"Câu ví dụ minh họa sẽ hiển thị ở đây..."'
+        with st.spinner("Đang phân tích nghĩa & tạo câu ví dụ..."):
+            ai_meaning, ai_example, err = auto_analyze_word(new_word, word_pos)
+            if err or not ai_meaning:
+                st.error(err or "Không thể phân tích từ vựng lúc này!")
+            else:
+                word_key = new_word.lower()
+                pos_code = word_pos.split(" ")[0]
+                final_example = highlight_word_in_example(new_word, ai_example)
+
+                current_data[word_key] = {
+                    "meaning": ai_meaning.strip(),
+                    "pos": pos_code,
+                    "example": final_example,
+                    "correct": current_data.get(word_key, {}).get("correct", 0),
+                    "wrong": current_data.get(word_key, {}).get("wrong", 0)
+                }
+
+                save_data(current_data, file_name)
+                st.session_state.last_saved_card = {
+                    "word": new_word,
+                    "pos": pos_code,
+                    "meaning": ai_meaning.strip(),
+                    "example": final_example
+                }
+                st.success(f"Đã phân tích và lưu thành công '{new_word}' vào bộ sưu tập!")
+                st.balloons()
+
+# --- CỘT LIVE PREVIEW (HIỂN THỊ THẺ TỪ VỪA LƯU HOẶC ĐANG NHẬP) ---
+with col_preview:
+    st.subheader("Thẻ từ vựng")
+    saved = st.session_state.last_saved_card
+
+    if new_word and (not saved or saved["word"].lower() != new_word.lower()):
+        pos_short = word_pos.split(" ")[0].lower()
+        badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
+        display_word = new_word
+        display_pos = word_pos.split(" ")[0]
+        display_meaning = "Bấm nút bên trái để tự động dịch nghĩa..."
+        display_example = '"Câu ví dụ sẽ được tạo tự động khi lưu..."'
+    elif saved:
+        pos_short = saved["pos"].lower()
+        badge_class = f"badge-{pos_short}" if pos_short in ["noun", "verb", "adj", "adv", "phrase"] else "badge-other"
+        display_word = saved["word"]
+        display_pos = saved["pos"]
+        display_meaning = saved["meaning"]
+        preview_html_example = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', saved["example"])
+        display_example = f'"{preview_html_example}"'
+    else:
+        badge_class = "badge-noun"
+        display_word = "Word Preview"
+        display_pos = "Noun"
+        display_meaning = "Nghĩa của từ sẽ tự động hiển thị tại đây..."
+        display_example = '"Câu ví dụ minh họa sẽ tự động hiển thị tại đây..."'
 
     st.markdown(f"""
     <div class="preview-card">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span class="preview-word">{display_word}</span>
-            <span class="pos-badge {badge_class}">{word_pos.split(' ')[0]}</span>
+            <span class="pos-badge {badge_class}">{display_pos}</span>
         </div>
         <div class="preview-meaning">{display_meaning}</div>
         <div class="preview-example">{display_example}</div>
     </div>
     """, unsafe_allow_html=True)
-
-# --- XỬ LÝ LƯU DỮ LIỆU ---
-if submitted:
-    if not new_word or not new_meaning:
-        st.error("Vui lòng nhập đầy đủ Từ tiếng Anh và Nghĩa tiếng Việt!")
-    else:
-        word_key = new_word.lower()
-        pos_code = word_pos.split(" ")[0]
-
-        final_example = highlight_word_in_example(new_word, example_sentence)
-
-        current_data[word_key] = {
-            "meaning": new_meaning,
-            "pos": pos_code,
-            "example": final_example,
-            "correct": current_data.get(word_key, {}).get("correct", 0),
-            "wrong": current_data.get(word_key, {}).get("wrong", 0)
-        }
-
-        save_data(current_data, file_name)
-        st.success(f"Đã thêm thành công '{new_word}' vào bộ sưu tập!")
-        st.balloons()
