@@ -64,7 +64,14 @@ st.markdown("""
     .dot-orange { width: 8px; height: 8px; border-radius: 50%; background: #EA580C; display: inline-block; }
     .dot-purple { width: 8px; height: 8px; border-radius: 50%; background: #7C3AED; display: inline-block; }
 
-    /* Hero Card kiểu Filko */
+    /* Tô nền màu be ấm cho khối Hero st.container(border=True) */
+    [data-testid="stVerticalBlockBorderWrapper"]:has(.hero-greeting) {
+        background-color: #EFECE3 !important;
+        border: 1px solid #E5DFD2 !important;
+        border-radius: 20px !important;
+        padding: 16px 20px !important;
+        margin-bottom: 20px !important;
+    }
     .editorial-hero {
         background-color: #EFECE3;
         border-radius: 20px;
@@ -218,51 +225,50 @@ if st.session_state.logged_in:
     </div>
     """, unsafe_allow_html=True)
 
-    # Khối Hero chính chia 2 nửa: Trái (Tiến độ + Nút đen) | Phải (3 Thẻ 01 - 02 - 03)
-    st.markdown('<div class="editorial-hero">', unsafe_allow_html=True)
-    col_left, col_right = st.columns([1.05, 1.45], gap="large")
+    # Khối Hero chính chia 2 nửa bọc chuẩn bằng st.container
+    with st.container(border=True):
+        col_left, col_right = st.columns([1.05, 1.45], gap="large")
 
-    with col_left:
-        st.markdown(f"""
-        <div class="hero-greeting">Salut, {username}!</div>
-        <div class="hero-headline">You've stored<br>{total_all} words<br>in your vault</div>
-        """, unsafe_allow_html=True)
-        if st.button("Start Practice  ↗", type="primary"):
-            st.switch_page("pages/1_study.py")
+        with col_left:
+            st.markdown(f"""
+            <div class="hero-greeting">Salut, {username}!</div>
+            <div class="hero-headline">You've stored<br>{total_all} words<br>in your vault</div>
+            """, unsafe_allow_html=True)
+            if st.button("Start Practice  ↗", type="primary"):
+                st.switch_page("pages/1_Study.py")
 
-    with col_right:
-        c1, c2, c3 = st.columns(3, gap="small")
-        with c1:
-            st.markdown(f"""
-            <div class="module-card mod-cream">
-                <div>
-                    <div class="mod-num">01</div>
-                    <div class="mod-title">Core<br>Vocabulary</div>
+        with col_right:
+            c1, c2, c3 = st.columns(3, gap="small")
+            with c1:
+                st.markdown(f"""
+                <div class="module-card mod-cream">
+                    <div>
+                        <div class="mod-num">01</div>
+                        <div class="mod-title">Core<br>Vocabulary</div>
+                    </div>
+                    <div class="mod-meta">{total_vocab} words</div>
                 </div>
-                <div class="mod-meta">{total_vocab} words</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""
-            <div class="module-card mod-yellow">
-                <div>
-                    <div class="mod-num">02</div>
-                    <div class="mod-title">Phrases &<br>Collocations</div>
+                """, unsafe_allow_html=True)
+            with c2:
+                st.markdown(f"""
+                <div class="module-card mod-yellow">
+                    <div>
+                        <div class="mod-num">02</div>
+                        <div class="mod-title">Phrases &<br>Collocations</div>
+                    </div>
+                    <div class="mod-meta">{total_colloc} items</div>
                 </div>
-                <div class="mod-meta">{total_colloc} items</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"""
-            <div class="module-card mod-purple">
-                <div>
-                    <div class="mod-num">03</div>
-                    <div class="mod-title">Memory<br>Accuracy</div>
+                """, unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"""
+                <div class="module-card mod-purple">
+                    <div>
+                        <div class="mod-num">03</div>
+                        <div class="mod-title">Memory<br>Accuracy</div>
+                    </div>
+                    <div class="mod-meta">{accuracy}% score</div>
                 </div>
-                <div class="mod-meta">{accuracy}% score</div>
-            </div>
-            """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
     # Khu vực bên dưới chia 2 cột: Trái (Lộ trình & Lối tắt) | Phải (Top Space Leaderboard)
     col_main, col_side = st.columns([1.65, 1], gap="large")
@@ -280,7 +286,7 @@ if st.session_state.logged_in:
         st.progress(min(accuracy / 100, 1.0))
         st.write("")
 
-        # 4 hàng lối tắt gọn gàng (đã cập nhật đúng tên file không icon)
+        # 4 hàng lối tắt (đã đồng bộ tên file viết hoa chữ cái đầu)
         r1, b1 = st.columns([3.5, 1])
         with r1:
             st.markdown("""
