@@ -6,10 +6,11 @@ import datetime
 import json
 import streamlit as st
 from utils.data_manager import load_data, save_data
-
-st.set_page_config(page_title="AI Assistant | Vocabulary Trainer", page_icon="🤖", layout="wide")
 from utils.ui_theme import apply_global_theme
-apply_global_theme("8_🤖_AI_Reader")
+
+st.set_page_config(page_title="AI Reader | Vocabulary Trainer", page_icon="📖", layout="wide")
+apply_global_theme("8_AI_Reader")
+
 # --- HÀM TỰ ĐỘNG BÔI ĐẬM TỪ VỰNG TRONG CÂU VÍ DỤ ---
 def highlight_word_in_example(word: str, example: str) -> str:
     if not word or not example:
@@ -71,7 +72,6 @@ def quick_analyze_word(word: str, api_key: str):
         except Exception:
             pass
 
-    # Dự phòng bằng Google Translate + Free Dictionary API
     try:
         from deep_translator import GoogleTranslator
         vi_meaning = GoogleTranslator(source="en", target="vi").translate(word)
@@ -101,76 +101,132 @@ def quick_analyze_word(word: str, api_key: str):
     except Exception as e:
         return None, None, None, f"Không thể phân tích từ vựng lúc này: {e}"
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS: WARM EDITORIAL AI READER ---
 st.markdown("""
 <style>
     .main .block-container {
-        padding-top: 2rem;
+        padding-top: 1.8rem;
         padding-bottom: 3rem;
-        max-width: 1050px;
-    }
-    
-    .app-title {
-        font-size: 2rem !important;
-        font-weight: 700 !important;
-        color: #1E293B;
-        letter-spacing: -0.5px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .app-subtitle {
-        color: #64748B;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
+        max-width: 980px !important;
     }
 
-    .svg-icon {
-        display: inline-block;
-        width: 18px;
-        height: 18px;
-        vertical-align: -3px;
-        fill: currentColor;
+    .reader-sub {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #78716C;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+    .reader-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1C1917;
+        letter-spacing: -0.6px;
+        margin-top: 2px;
+    }
+    .reader-desc {
+        color: #57534E;
+        font-size: 0.94rem;
+        margin-top: 4px;
+        margin-bottom: 1.4rem;
     }
 
+    /* Thẻ bọc từng bước cấu hình */
+    .step-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E7E2D6;
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 10px rgba(28, 25, 23, 0.02);
+    }
+    .step-kicker {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #7C3AED;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+    .step-heading {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #1C1917;
+        margin-bottom: 12px;
+    }
+
+    /* Tag từ vựng đã chọn dịu mắt theo tông Editorial */
+    span[data-baseweb="tag"] {
+        background-color: #EFECE3 !important;
+        color: #1C1917 !important;
+        border: 1px solid #DFD9C8 !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    span[data-baseweb="tag"] span {
+        color: #1C1917 !important;
+    }
+    span[data-baseweb="tag"] svg {
+        fill: #57534E !important;
+    }
+
+    /* Badge cấp độ */
     .level-badge {
         display: inline-block;
-        padding: 3px 8px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-    }
-    .badge-easy { background-color: #DCFCE7; color: #15803D; }
-    .badge-normal { background-color: #E0F2FE; color: #0369A1; }
-    .badge-hard { background-color: #FEE2E2; color: #B91C1C; }
-
-    .word-chip {
-        display: inline-block;
-        background-color: #F1F5F9;
-        color: #334155;
-        border: 1px solid #E2E8F0;
         padding: 3px 10px;
         border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+    .badge-easy { background-color: #DCFCE7; color: #15803D; }
+    .badge-normal { background-color: #EDE9FE; color: #7C3AED; }
+    .badge-hard { background-color: #FEF3C7; color: #B45309; }
+
+    /* Chip từ vựng trong bài đọc */
+    .word-chip {
+        display: inline-block;
+        background-color: #FAF8F2;
+        color: #1C1917;
+        border: 1px solid #E7E2D6;
+        padding: 4px 11px;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
         margin-right: 6px;
         margin-bottom: 6px;
+    }
+
+    /* Khung bài đọc kiểu tạp chí */
+    .passage-shell {
+        background-color: #EFECE3;
+        border: 1px solid #E5DFD2;
+        border-radius: 22px;
+        padding: 14px;
+        margin-top: 8px;
+        margin-bottom: 14px;
+    }
+    .passage-paper {
+        background-color: #FFFFFF;
+        border: 1px solid #E7E2D6;
+        border-radius: 16px;
+        padding: 24px 26px;
+        color: #1C1917;
+        line-height: 1.75;
     }
 </style>
 """, unsafe_allow_html=True)
 
-ICON_ROBOT = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-3H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>'
-
-st.markdown(f"""
+st.markdown("""
 <div>
-    <div class="app-title">{ICON_ROBOT} AI Reading Assistant</div>
-    <div class="app-subtitle">Tạo bài thực hành ngữ cảnh kèm từ điển mini từ bộ sưu tập từ vựng cá nhân</div>
+    <div class="reader-sub">Contextual Reading Studio</div>
+    <div class="reader-title">AI Reading Assistant</div>
+    <div class="reader-desc">Tạo bài thực hành ngữ cảnh kèm từ điển mini từ bộ sưu tập từ vựng cá nhân</div>
 </div>
 """, unsafe_allow_html=True)
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Dashboard trước!")
     st.stop()
 
 username = st.session_state.username
@@ -182,48 +238,62 @@ if not clean_api_key:
     st.stop()
 
 ai_history = load_data(history_file)
-if not isinstance(ai_history, list): ai_history = []
+if not isinstance(ai_history, list):
+    ai_history = []
 
 colloc_data = load_data(f"data_collocation_{username}.json")
 vocab_data = load_data(f"data_vocab_{username}.json")
-if not isinstance(colloc_data, dict): colloc_data = {}
-if not isinstance(vocab_data, dict): vocab_data = {}
+if not isinstance(colloc_data, dict):
+    colloc_data = {}
+if not isinstance(vocab_data, dict):
+    vocab_data = {}
 
 user_all_words = list({**colloc_data, **vocab_data}.keys())
 
-tab_create, tab_history = st.tabs(["Tạo bài đọc mới", "Lịch sử tạo bài AI"])
+tab_create, tab_history = st.tabs(["Create Reading", "Saved History"])
 
 with tab_create:
     if not user_all_words:
         st.info("Kho từ vựng cá nhân của bạn hiện đang trống. Hãy sang mục Add Word hoặc Library để thêm từ trước nhé!")
     else:
-        st.subheader("1. Chọn từ vựng luyện tập")
+        # --- BƯỚC 1: CHỌN TỪ VỰNG ---
+        st.markdown("""
+        <div class="step-card">
+            <div class="step-kicker">Step 01 · Word Selection</div>
+            <div class="step-heading">Chọn từ vựng luyện tập</div>
+        """, unsafe_allow_html=True)
 
         if "reader_selected_words" not in st.session_state:
             st.session_state.reader_selected_words = user_all_words[:min(5, len(user_all_words))]
 
-        col_quick1, col_quick2 = st.columns(2)
+        col_quick1, col_quick2 = st.columns(2, gap="medium")
         with col_quick1:
-            if st.button("🎲 AI chọn ngẫu nhiên 5 từ", use_container_width=True):
+            if st.button("Random 5 Words", use_container_width=True):
                 st.session_state.reader_selected_words = random.sample(user_all_words, min(5, len(user_all_words)))
                 st.rerun()
 
         with col_quick2:
-            if st.button("🎲 AI chọn ngẫu nhiên 8 từ", use_container_width=True):
+            if st.button("Random 8 Words", use_container_width=True):
                 st.session_state.reader_selected_words = random.sample(user_all_words, min(8, len(user_all_words)))
                 st.rerun()
 
+        st.write("")
         selected_words = st.multiselect(
-            "Tích chọn các từ muốn luyện tập:",
+            "Tích chọn các từ muốn đưa vào bài đọc:",
             options=user_all_words,
             key="reader_selected_words"
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        st.write("")
-        st.subheader("2. Thiết lập cấu hình bài tập")
-        
-        col_type, col_level = st.columns([2, 1])
-        
+        # --- BƯỚC 2: CẤU HÌNH BÀI TẬP ---
+        st.markdown("""
+        <div class="step-card">
+            <div class="step-kicker">Step 02 · Configuration</div>
+            <div class="step-heading">Thiết lập cấu hình bài tập</div>
+        """, unsafe_allow_html=True)
+
+        col_type, col_level = st.columns([1.8, 1], gap="medium")
+
         with col_type:
             task_type = st.selectbox(
                 "Dạng bài tập",
@@ -243,9 +313,8 @@ with tab_create:
                 ]
             )
 
-        st.divider()
-
-        if st.button("Tạo Bài Tập Ngay", type="primary", use_container_width=True):
+        st.write("")
+        if st.button("Generate Reading Passage  ↗", type="primary", use_container_width=True):
             if not selected_words:
                 st.warning("Bạn chưa chọn từ vựng nào!")
             else:
@@ -288,7 +357,7 @@ with tab_create:
 
                     list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_api_key}"
                     working_models = []
-                    
+
                     try:
                         list_res = requests.get(list_url, timeout=10)
                         if list_res.status_code == 200:
@@ -315,16 +384,16 @@ with tab_create:
 
                             if res.status_code == 200:
                                 raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                                
+
                                 try:
                                     ai_data = json.loads(raw_text)
                                     paragraph = ai_data.get("paragraph", "")
                                     vocab_list = ai_data.get("vocabulary", [])
-                                    
-                                    clean_content = paragraph + "\n\n---\n### 📚 Mini Dictionary\n"
+
+                                    clean_content = paragraph + "\n\n---\n### Mini Dictionary\n"
                                     for v in vocab_list:
-                                        clean_content += f"• **{v.get('word', '')}**: {v.get('meaning', '')}\n"
-                                        
+                                        clean_content += f"- **{v.get('word', '')}**: {v.get('meaning', '')}\n"
+
                                 except json.JSONDecodeError:
                                     clean_content = "Đã xảy ra lỗi khi xử lý dữ liệu từ AI. Vui lòng thử lại!"
 
@@ -335,10 +404,10 @@ with tab_create:
                                     "words": selected_words,
                                     "content": clean_content
                                 }
-                                
+
                                 ai_history.insert(0, new_entry)
                                 save_data(ai_history, history_file)
-                                
+
                                 success = True
                                 st.balloons()
                                 st.rerun()
@@ -352,33 +421,41 @@ with tab_create:
                     if not success:
                         st.error(f"Có lỗi kết nối AI: {last_error}")
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # --- KẾT QUẢ BÀI ĐỌC VỪA TẠO ---
         if ai_history:
             latest_item = ai_history[0]
             st.write("")
-            st.subheader("Bài tập AI vừa tạo gần nhất")
-            
-            diff_str = latest_item.get('difficulty', 'Normal')
-            if "Easy" in diff_str: badge_html = '<span class="level-badge badge-easy">EASY</span>'
-            elif "Hard" in diff_str: badge_html = '<span class="level-badge badge-hard">HARD</span>'
-            else: badge_html = '<span class="level-badge badge-normal">NORMAL</span>'
+            st.markdown('<div class="reader-sub">Latest Generated Passage</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-size:1.35rem; font-weight:800; color:#1C1917; margin-bottom:6px;">Bài tập AI vừa tạo gần nhất</div>', unsafe_allow_html=True)
 
-            st.caption(f"Tạo lúc: {latest_item['time']} | Dạng: {latest_item['task_type']}")
-            st.markdown(f"**Cấp độ:** {badge_html}", unsafe_allow_html=True)
-            
-            chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item['words']])
-            st.markdown(f"<div style='margin-top: 8px; margin-bottom: 12px;'><b>Từ vựng đưa vào bài:</b><br>{chips_html}</div>", unsafe_allow_html=True)
-            
-            with st.container(border=True):
-                st.markdown(latest_item["content"])
+            diff_str = latest_item.get("difficulty", "Normal")
+            if "Easy" in diff_str:
+                badge_html = '<span class="level-badge badge-easy">EASY</span>'
+            elif "Hard" in diff_str:
+                badge_html = '<span class="level-badge badge-hard">HARD</span>'
+            else:
+                badge_html = '<span class="level-badge badge-normal">NORMAL</span>'
 
-            with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân!", expanded=False):
-                col_w1, col_w2 = st.columns([3, 1.5])
+            st.caption(f"Tạo lúc: {latest_item['time']} · Dạng: {latest_item['task_type']}")
+            st.markdown(f"<div style='margin:6px 0 10px 0;'>{badge_html}</div>", unsafe_allow_html=True)
+
+            chips_html = "".join([f'<span class="word-chip">{w}</span>' for w in latest_item["words"]])
+            st.markdown(f"<div style='margin-bottom:10px;'>{chips_html}</div>", unsafe_allow_html=True)
+
+            st.markdown('<div class="passage-shell"><div class="passage-paper">', unsafe_allow_html=True)
+            st.markdown(latest_item["content"])
+            st.markdown('</div></div>', unsafe_allow_html=True)
+
+            with st.expander("Thấy từ mới trong bài đọc? Thêm nhanh vào kho từ vựng cá nhân", expanded=False):
+                col_w1, col_w2 = st.columns([3, 1.5], gap="medium")
                 with col_w1:
-                    new_w = st.text_input("Từ/Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent, take action")
+                    new_w = st.text_input("Từ / Cụm từ mới:", key="add_quick_word", placeholder="e.g. permanent, take action")
                 with col_w2:
                     target_repo = st.selectbox("Lưu vào kho:", ["Normal Vocab", "Collocations"], key="add_quick_repo")
 
-                if st.button("✨ AI Phân tích & Lưu vào Kho từ vựng", type="primary", use_container_width=True):
+                if st.button("AI Phân tích & Lưu vào Kho", type="primary", use_container_width=True):
                     if not new_w.strip():
                         st.warning("Vui lòng nhập Từ / Cụm từ mới!")
                     else:
@@ -409,22 +486,24 @@ with tab_create:
                                 st.success(f"Đã lưu '{clean_word}' [{clean_pos}] — {ai_meaning.strip()} vào kho {target_repo}!")
 
 with tab_history:
-    st.subheader("Danh sách bài đọc AI đã lưu")
-    
+    st.markdown('<div style="font-size:1.25rem; font-weight:800; color:#1C1917; margin-bottom:10px;">Danh sách bài đọc AI đã lưu</div>', unsafe_allow_html=True)
+
     if not ai_history:
-        st.info("Chưa có lịch sử bài đọc nào được lưu. Hãy tạo bài đọc mới ở Tab 'Tạo bài đọc mới' nhé!")
+        st.info("Chưa có lịch sử bài đọc nào được lưu. Hãy tạo bài đọc mới ở Tab 'Create Reading' nhé!")
     else:
-        if st.button("Xóa toàn bộ lịch sử bài đọc", type="secondary"):
+        if st.button("Clear All History", type="secondary"):
             save_data([], history_file)
-            st.success("Đã xóa sạch lịch sử!")
+            st.toast("Đã xóa sạch lịch sử!")
             st.rerun()
 
-        st.write("---")
+        st.write("")
 
         for idx, item in enumerate(ai_history):
-            diff_tag = item.get('difficulty', 'Normal').split(" ")[0]
-            with st.expander(f"Bài #{len(ai_history) - idx} — {item['time']} [{diff_tag}] ({len(item['words'])} từ)"):
-                st.caption(f"**Dạng bài:** {item['task_type']} | **Cấp độ:** {diff_tag}")
-                st.write(f"**Từ vựng sử dụng:** {', '.join([f'`{w}`' for w in item['words']])}")
-                with st.container(border=True):
-                    st.markdown(item["content"])
+            diff_tag = item.get("difficulty", "Normal").split(" ")[0]
+            with st.expander(f"Passage #{len(ai_history) - idx} — {item['time']} [{diff_tag}] ({len(item['words'])} words)"):
+                st.caption(f"Dạng bài: {item['task_type']} · Cấp độ: {diff_tag}")
+                chips = "".join([f'<span class="word-chip">{w}</span>' for w in item["words"]])
+                st.markdown(f"<div style='margin-bottom:10px;'>{chips}</div>", unsafe_allow_html=True)
+                st.markdown('<div class="passage-shell"><div class="passage-paper">', unsafe_allow_html=True)
+                st.markdown(item["content"])
+                st.markdown('</div></div>', unsafe_allow_html=True)
