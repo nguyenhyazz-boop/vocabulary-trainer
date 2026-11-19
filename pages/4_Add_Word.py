@@ -1,8 +1,72 @@
+import json
 import re
+import urllib.request
 import streamlit as st
 from utils.data_manager import load_data, save_data
 
 st.set_page_config(page_title="Add Word | Vocabulary Trainer", page_icon="📝", layout="wide")
+
+# --- HÀM GỌI AI TỰ ĐỘNG PHÂN TÍCH NGHĨA & VÍ DỤ ---
+def auto_analyze_word(word: str, pos: str):
+    groq_key = st.secrets.get("GROQ_API_KEY", "")
+    gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+
+    prompt = (
+        f"Bạn là trợ lý học từ vựng tiếng Anh cho học sinh Việt Nam ôn thi THPT. "
+        f"Hãy phân tích từ/cụm từ tiếng Anh: '{word}' với loại từ '{pos}'. "
+        f"Trả về DUY NHẤT một chuỗi JSON hợp lệ (không markdown, không giải thích thêm) theo định dạng:\n"
+        f'{{"meaning": "nghĩa tiếng Việt ngắn gọn, sát nghĩa nhất (tối đa 6-8 từ)", '
+        f'"example": "1 câu ví dụ tiếng Anh cơ bản, tự nhiên có chứa chính xác từ/cụm từ đó"}}'
+    )
+
+    # Ưu tiên 1: Groq API (siêu nhanh)
+    if groq_key:
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "response_format": {"type": "json_object"}
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                return parsed.get("meaning", ""), parsed.get("example", ""), None
+        except Exception as e:
+            return None, None, f"Lỗi Groq API: {e}"
+
+    # Ưu tiên 2: Gemini API
+    if gemini_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(content)
+                return parsed.get("meaning", ""), parsed.get("example", ""), None
+        except Exception as e:
+            return None, None, f"Lỗi Gemini API: {e}"
+
+    return None, None, "Chưa tìm thấy GROQ_API_KEY hoặc GEMINI_API_KEY trong Streamlit Secrets!"
 
 # --- CUSTOM CSS: MODERN SAAS STYLING ---
 st.markdown("""
@@ -84,7 +148,7 @@ st.markdown("""
 st.markdown("""
 <div class="app-header">
     <div class="app-title">Add New Word</div>
-    <div class="app-subtitle">Thêm và phân loại từ vựng mới vào bộ sưu tập cá nhân</div>
+    <div class="app-subtitle">Thêm và phân loại từ vựng mới vào bộ sưu tập cá nhân (Hỗ trợ AI tự động dịch nghĩa & tạo ví dụ)</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -94,6 +158,12 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 username = st.session_state.username
+
+# Khởi tạo session_state cho các ô nhập liệu để AI có thể tự động điền giá trị
+if "add_meaning_val" not in st.session_state:
+    st.session_state.add_meaning_val = ""
+if "add_example_val" not in st.session_state:
+    st.session_state.add_example_val = ""
 
 # --- CHỌN KHO LƯU TRỮ ---
 category = st.radio(
@@ -123,11 +193,9 @@ def highlight_word_in_example(word: str, example: str) -> str:
     if not clean_w:
         return example
 
-    # Bỏ qua nếu từ đã được bôi đậm sẵn trước đó
     if f"**{clean_w.lower()}**" in example.lower():
         return example
 
-    # Dùng Regex để tự động bọc **từ_vựng** (giữ nguyên hoa/thường theo câu gốc)
     pattern = re.compile(re.escape(clean_w), re.IGNORECASE)
     return pattern.sub(lambda m: f"**{m.group(0)}**", example)
 
@@ -139,7 +207,7 @@ with col_form:
     
     new_word = st.text_input("Từ / Cụm từ Tiếng Anh", placeholder="e.g. account, take action").strip()
     
-    col_pos, col_repo = st.columns(2)
+    col_pos, col_ai = st.columns([1.3, 1])
     with col_pos:
         word_pos = st.selectbox(
             "Loại từ (Part of Speech)",
@@ -153,9 +221,34 @@ with col_form:
                 "Other"
             ]
         )
-    
-    new_meaning = st.text_input("Nghĩa Tiếng Việt", placeholder="e.g. câu chuyện, bản báo cáo").strip()
-    example_sentence = st.text_area("Câu ví dụ (Tự động in đậm từ vựng)", placeholder="e.g. She gave a detailed account of the event.", height=80).strip()
+    with col_ai:
+        st.write("")
+        st.write("")
+        if st.button("✨ AI Dịch & Tạo ví dụ", use_container_width=True):
+            if not new_word:
+                st.warning("Hãy nhập từ tiếng Anh trước nhé!")
+            else:
+                with st.spinner("AI đang phân tích từ vựng..."):
+                    ai_vi, ai_ex, err = auto_analyze_word(new_word, word_pos)
+                    if err:
+                        st.error(err)
+                    else:
+                        st.session_state.add_meaning_val = ai_vi
+                        st.session_state.add_example_val = ai_ex
+                        st.rerun()
+
+    new_meaning = st.text_input(
+        "Nghĩa Tiếng Việt",
+        key="add_meaning_val",
+        placeholder="e.g. câu chuyện, bản báo cáo"
+    ).strip()
+
+    example_sentence = st.text_area(
+        "Câu ví dụ (Tự động in đậm từ vựng)",
+        key="add_example_val",
+        placeholder="e.g. She gave a detailed account of the event.",
+        height=80
+    ).strip()
 
     st.write("")
     submitted = st.button("Lưu Từ Vựng", type="primary", use_container_width=True)
@@ -170,10 +263,8 @@ with col_preview:
     display_word = new_word if new_word else "Word Preview"
     display_meaning = new_meaning if new_meaning else "Nghĩa của từ sẽ hiển thị ở đây..."
     
-    # Tự động bôi đậm trực tiếp trên Live Preview thời gian thực
     if example_sentence and new_word:
         auto_highlighted_preview = highlight_word_in_example(new_word, example_sentence)
-        # Chuyển đổi Markdown **word** sang thẻ <b>word</b> để hiển thị trong HTML Card
         preview_html_example = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', auto_highlighted_preview)
         display_example = f'"{preview_html_example}"'
     elif example_sentence:
@@ -200,7 +291,6 @@ if submitted:
         word_key = new_word.lower()
         pos_code = word_pos.split(" ")[0]
 
-        # Tự động xử lý bôi đậm trước khi lưu vào JSON
         final_example = highlight_word_in_example(new_word, example_sentence)
 
         current_data[word_key] = {
