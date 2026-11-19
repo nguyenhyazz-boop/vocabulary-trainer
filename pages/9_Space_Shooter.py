@@ -5,10 +5,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 from supabase import create_client
 from utils.data_manager import load_data
-
-st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="🚀", layout="wide")
 from utils.ui_theme import apply_global_theme
-apply_global_theme("9_🚀_Space_Shooter")
+
+st.set_page_config(page_title="Space Shooter | Vocabulary Trainer", page_icon="📖", layout="wide")
+apply_global_theme("9_Space_Shooter")
+
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
@@ -35,77 +36,144 @@ def get_leaderboard():
 st.markdown("""
 <style>
     .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 920px !important;
+        padding-top: 1.6rem;
+        padding-bottom: 2.5rem;
+        max-width: 960px !important;
     }
-    .app-title {
-        font-size: 1.9rem !important;
-        font-weight: 800 !important;
-        color: #1E293B;
+    .space-header {
         text-align: center;
-        margin-bottom: 0.2rem;
+        margin-bottom: 1.3rem;
     }
-    .app-subtitle {
-        text-align: center;
-        color: #64748B;
-        font-size: 0.95rem;
-        margin-bottom: 1.2rem;
+    .space-sub {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #78716C;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
     }
+    .space-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1C1917;
+        letter-spacing: -0.6px;
+        margin-top: 2px;
+    }
+    .space-desc {
+        color: #57534E;
+        font-size: 0.94rem;
+        margin-top: 4px;
+    }
+
+    /* Bảng xếp hạng Warm Editorial */
     .lb-card {
-        background: linear-gradient(135deg, #0F172A, #1E293B);
-        color: #F8FAFC;
-        border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 10px;
-        border: 1px solid #334155;
+        background-color: #EFECE3;
+        border: 1px solid #E5DFD2;
+        border-radius: 18px;
+        padding: 12px 16px;
+        margin-top: 10px;
     }
     .lb-row {
         display: flex;
         justify-content: space-between;
-        padding: 7px 10px;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-        font-size: 0.94rem;
+        align-items: center;
+        background-color: #FFFFFF;
+        border: 1px solid #E7E2D6;
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 0.92rem;
+        color: #1C1917;
     }
-    .lb-row:last-child { border-bottom: none; }
+    .lb-row:last-child {
+        margin-bottom: 0;
+    }
+    .lb-rank-badge {
+        display: inline-block;
+        background-color: #F3EFE6;
+        color: #57534E;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 2px 9px;
+        border-radius: 20px;
+        margin-right: 8px;
+    }
+    .lb-rank-top {
+        background-color: #FACC15;
+        color: #1C1917;
+    }
+    .lb-me {
+        border-color: #7C3AED !important;
+        background-color: #FAF5FF !important;
+    }
+    .lb-score-pill {
+        background-color: #EFECE3;
+        color: #1C1917;
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 3px 10px;
+        border-radius: 20px;
+    }
+
+    /* Tag từ đã chọn dịu mắt theo tông Editorial */
+    span[data-baseweb="tag"] {
+        background-color: #EFECE3 !important;
+        color: #1C1917 !important;
+        border: 1px solid #DFD9C8 !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    span[data-baseweb="tag"] span {
+        color: #1C1917 !important;
+    }
+    span[data-baseweb="tag"] svg {
+        fill: #57534E !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="app-title">🚀 Space Vocab Defender</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Kỷ lục tự động cập nhật lên Bảng Xếp Hạng!</div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="space-header">
+    <div class="space-sub">Arcade Vocabulary Reflex</div>
+    <div class="space-title">Space Vocab Defender</div>
+    <div class="space-desc">Bắn hạ hạm đội tàu địch bằng từ vựng tiếng Anh — Kỷ lục tự động cập nhật lên Bảng Xếp Hạng</div>
+</div>
+""", unsafe_allow_html=True)
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Vui lòng đăng nhập tại Trang chủ trước!")
+    st.warning("Vui lòng đăng nhập tại Dashboard trước!")
     st.stop()
 
 username = st.session_state.username
 
-with st.expander("🏆 Bảng Xếp Hạng Top 10 Phi Công Vũ Trụ", expanded=False):
+with st.expander("Top 10 Pilots Leaderboard", expanded=False):
     col_lb1, col_lb2 = st.columns([4, 1])
     with col_lb1:
         st.caption("Kỷ lục cá nhân cao nhất của bạn sẽ tự động cập nhật ngay khi kết thúc trận đấu.")
     with col_lb2:
-        if st.button("🔄 Làm mới Top", use_container_width=True):
+        if st.button("Refresh Top", use_container_width=True):
             st.rerun()
 
     lb_data = get_leaderboard()
     if not lb_data:
         st.info("Chưa có ai ghi danh trên Bảng Xếp Hạng. Hãy chơi ngay 1 trận để mở bát!")
     else:
-        medals = ["🥇", "🥈", "🥉"]
         rows_html = ""
         for idx, row in enumerate(lb_data):
-            rank_icon = medals[idx] if idx < 3 else f"#{idx + 1}"
-            u_name = row.get("username", "Unknown")
-            h_score = row.get("high_score", 0)
-            m_combo = row.get("max_combo", 0)
-            highlight = "color: #38BDF8; font-weight: 700;" if u_name == username else ""
-            rows_html += f"""
-            <div class="lb-row" style="{highlight}">
-                <span>{rank_icon} <b>{u_name}</b></span>
-                <span>🔥 Combo x{m_combo}  |  ⭐ <b>{h_score:,} đ</b></span>
-            </div>
-            """
+            rank_num = idx + 1
+            rank_cls = "lb-rank-badge lb-rank-top" if rank_num <= 3 else "lb-rank-badge"
+            u_name = str(row.get("username", "Unknown"))
+            h_score = int(row.get("high_score", 0) or 0)
+            m_combo = int(row.get("max_combo", 0) or 0)
+            me_cls = " lb-me" if u_name == username else ""
+            rows_html += (
+                f'<div class="lb-row{me_cls}">'
+                f'<div><span class="{rank_cls}">#{rank_num}</span><b>{u_name}</b></div>'
+                f'<div style="display:flex; gap:8px; align-items:center;">'
+                f'<span style="font-size:0.82rem; color:#78716C; font-weight:700;">Combo x{m_combo}</span>'
+                f'<span class="lb-score-pill">{h_score:,} pts</span>'
+                f'</div>'
+                f'</div>'
+            )
         st.markdown(f'<div class="lb-card">{rows_html}</div>', unsafe_allow_html=True)
 
 vocab_data = load_data(f"data_vocab_{username}.json")
@@ -116,8 +184,8 @@ if not isinstance(vocab_data, dict):
 if not isinstance(colloc_data, dict):
     colloc_data = {}
 
-with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expanded=True):
-    col1, col2, col3 = st.columns(3)
+with st.expander("Squadron & Game Settings", expanded=True):
+    col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
         source_choice = st.selectbox(
@@ -170,7 +238,7 @@ with st.expander("⚙️ Thiết lập đội hình & Chế độ chơi", expand
                 max_value=max_w,
                 value=min(15, max_w)
             )
-        if st.button("🔄 Đổi bộ từ ngẫu nhiên khác"):
+        if st.button("Shuffle Word Pool"):
             st.session_state.space_seed = random.randint(1, 99999)
         seed = st.session_state.get("space_seed", 42)
         rng = random.Random(seed)
