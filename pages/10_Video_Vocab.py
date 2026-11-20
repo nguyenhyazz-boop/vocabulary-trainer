@@ -273,56 +273,6 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
     except Exception as e:
         return None, f"Lỗi xử lý file: {e}"
 
-@st.cache_data(ttl=7200, show_spinner=False)
-def try_yt_dlp_audio_link(video_id: str, api_key: str):
-    try:
-        import yt_dlp
-    except ImportError:
-        return None, "Chưa cài yt-dlp."
-
-    url = f"[https://www.youtube.com/watch?v=](https://www.youtube.com/watch?v=){video_id}"
-    common_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-
-    for client_group in (["android", "mweb"], ["web", "ios"]):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_tpl = os.path.join(tmpdir, "audio.%(ext)s")
-            ydl_opts = {
-                "format": "worstaudio[ext=m4a]/worstaudio/bestaudio",
-                "outtmpl": out_tpl,
-                "quiet": True,
-                "no_warnings": True,
-                "noplaylist": True,
-                "socket_timeout": 15,
-                "retries": 2,
-                "max_filesize": 25 * 1024 * 1024,
-                "http_headers": common_headers,
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": client_group
-                    }
-                }
-            }
-            audio_path = None
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-                for f in os.listdir(tmpdir):
-                    if f.startswith("audio."):
-                        audio_path = os.path.join(tmpdir, f)
-                        break
-            except Exception:
-                audio_path = None
-
-            if audio_path and os.path.exists(audio_path):
-                ext = os.path.splitext(audio_path)[1].lower()
-                mime_map = {".m4a": "audio/mp4", ".mp3": "audio/mpeg", ".webm": "audio/webm", ".ogg": "audio/ogg", ".opus": "audio/opus"}
-                return upload_and_transcribe_file(audio_path, mime_map.get(ext, "audio/mp4"), f"yt_{video_id}", api_key)
-
-    return None, "YouTube chặn kết nối trực tiếp từ IP Cloud cho link này. Bạn hãy tải video/audio về máy rồi upload ở mục bên dưới nhé."
-
 @st.cache_data(ttl=86400, show_spinner=False)
 def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
     words_list = list(words_tuple)
@@ -490,7 +440,7 @@ st.markdown("""
 <div class="editorial-header">
     <div class="vid-kicker">Editorial Media & Vocab Studio</div>
     <h1 class="vid-title">YouTube Video Vocab</h1>
-    <p class="vid-desc">Dán link YouTube để bóc phụ đề hoặc thử kéo âm thanh tự động; nếu bị chặn trên Cloud thì tải file về upload hoặc dán lời thủ công.</p>
+    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để nghe/xem, bóc lời và nhặt từ vựng.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -521,7 +471,7 @@ for k, default_v in [
         st.session_state[k] = default_v
 
 with st.container(border=True):
-    st.caption("STEP 1 · YOUTUBE LINK")
+    st.caption("STEP 1 · YOUTUBE LINK (AUTO CC)")
     col_url, col_btn = st.columns([4, 1.25], gap="small")
     with col_url:
         yt_url = st.text_input(
@@ -530,7 +480,7 @@ with st.container(border=True):
             label_visibility="collapsed"
         )
     with col_btn:
-        extract_clicked = st.button("Bóc lời từ link  ↗", type="primary", use_container_width=True)
+        extract_clicked = st.button("Bóc phụ đề CC  ↗", type="primary", use_container_width=True)
 
 parsed_vid = extract_video_id(yt_url.strip()) if yt_url else None
 if yt_url and not parsed_vid:
@@ -553,26 +503,12 @@ if parsed_vid and (extract_clicked or parsed_vid != st.session_state.vv_video_id
         st.session_state.vv_segments = []
         st.session_state.vv_source = ""
         st.session_state.vv_notice = (
-            "Không lấy được phụ đề CC trực tiếp từ link này. Bạn có thể bấm thử bóc audio tự động hoặc tải file về upload ở mục bên dưới."
+            "Link này không lấy được phụ đề CC tự động trên Cloud. "
+            "Hãy tải video/audio về máy rồi upload ở mục bên dưới (hoặc dán lời thủ công) để bóc lời nhé!"
         )
 
-if st.session_state.vv_video_id and not st.session_state.vv_segments:
-    c_try, c_info = st.columns([1.45, 2.55], gap="small")
-    with c_try:
-        if st.button("Thử bóc âm thanh từ link", use_container_width=True):
-            with st.spinner("Đang thử kéo âm thanh & bóc bằng Gemini AI..."):
-                dl_segs, dl_err = try_yt_dlp_audio_link(st.session_state.vv_video_id, gemini_api_key)
-            if dl_segs:
-                st.session_state.vv_segments = dl_segs
-                st.session_state.vv_source = "Gemini AI · Link Audio"
-                st.session_state.vv_notice = ""
-                st.rerun()
-            else:
-                st.session_state.vv_notice = dl_err or "Link bị chặn trên Cloud, hãy tải file về upload nhé."
-                st.rerun()
-    with c_info:
-        if st.session_state.vv_notice:
-            st.warning(st.session_state.vv_notice)
+if st.session_state.vv_notice:
+    st.warning(st.session_state.vv_notice)
 
 with st.expander("STEP 2 · Tải file audio/video lên (MP3, M4A, WAV, MP4, WEBM) hoặc dán lời thủ công", expanded=bool(st.session_state.vv_notice) or not bool(st.session_state.vv_segments)):
     up_audio = st.file_uploader(
@@ -724,4 +660,4 @@ if segments:
             else:
                 st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ đoạn lời bên trái.")
 else:
-    st.info("Dán link YouTube để kiểm tra phụ đề hoặc mở mục tải file audio/video ở trên để bắt đầu.")
+    st.info("Dán link YouTube có phụ đề CC hoặc mở mục tải file audio/video ở trên để bắt đầu.")
