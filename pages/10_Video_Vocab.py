@@ -39,24 +39,28 @@ def extract_video_id(url: str):
             return match.group(1)
     return None
 
-def get_best_gemini_model(api_key: str) -> str:
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_available_gemini_models(api_key: str) -> list:
+    if not api_key:
+        return []
     try:
-        res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}", timeout=10)
+        res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}", timeout=12)
         if res.status_code == 200:
-            exclude = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
-            models = [
-                m["name"].replace("models/", "")
-                for m in res.json().get("models", [])
-                if "generateContent" in m.get("supportedGenerationMethods", [])
-                and "gemini" in m.get("name", "").lower()
-                and not any(k in m.get("name", "").lower() for k in exclude)
-            ]
-            models.sort(key=lambda x: (0 if "flash" in x else 1, x))
+            exclude = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa", "1.0", "1.5")
+            models = []
+            for m in res.json().get("models", []):
+                m_name = m.get("name", "")
+                low = m_name.lower()
+                methods = m.get("supportedGenerationMethods", [])
+                if "generateContent" in methods and "gemini" in low and not any(k in low for k in exclude):
+                    models.append(m_name.replace("models/", ""))
+            # Ưu tiên flash đời mới trước
+            models.sort(key=lambda x: (0 if "2.5-flash" in x else (1 if "2.0-flash" in x else (2 if "flash" in x else 3)), x))
             if models:
-                return models[0]
+                return models
     except Exception:
         pass
-    return "gemini-2.5-flash"
+    return ["gemini-2.5-flash", "gemini-2.0-flash"]
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_youtube_transcript(video_id: str):
@@ -155,7 +159,6 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
         if not file_uri or not file_name:
             return None, "Phản hồi upload thiếu thông tin file."
 
-        # Chờ Gemini xử lý xong file media trước khi gọi generateContent
         for _ in range(20):
             st_res = requests.get(
                 f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}",
@@ -175,13 +178,10 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
             "Return ONLY a JSON array: [{\"start\": 0, \"text\": \"line\"}, ...]."
         )
 
-        candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-        best_model = get_best_gemini_model(api_key)
-        if best_model not in candidate_models:
-            candidate_models.insert(0, best_model)
-
+        candidate_models = get_available_gemini_models(api_key)
         raw_out = ""
         last_err = ""
+
         for m_name in candidate_models:
             gen_res = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}",
@@ -201,7 +201,7 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
                 if raw_out:
                     break
             else:
-                last_err = f"({gen_res.status_code}) {gen_res.text[:160]}"
+                last_err = f"({gen_res.status_code}) {m_name}: {gen_res.text[:140]}"
 
         try:
             requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=8)
@@ -209,7 +209,7 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
             pass
 
         if not raw_out:
-            return None, f"Lỗi Gemini API {last_err or '(404)'}."
+            return None, f"Lỗi Gemini API {last_err}."
 
         m = re.search(r"\[.*\]", raw_out, re.DOTALL)
         if m:
@@ -279,26 +279,29 @@ def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
         return {}
     result_map = {}
     if gemini_key:
-        model_name = get_best_gemini_model(gemini_key)
+        models = get_available_gemini_models(gemini_key)
         prompt = (
             f"Translate each English word or phrase in this list into concise Vietnamese meaning (1-4 words each). "
             f"Return ONLY valid JSON object mapping each exact word to its Vietnamese meaning:\n{json.dumps(words_list, ensure_ascii=False)}"
         )
-        try:
-            res = requests.post(
-                f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){model_name}:generateContent?key={gemini_key}",
-                json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}},
-                timeout=15
-            )
-            if res.status_code == 200:
-                raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-                m = re.search(r"\{.*\}", raw, re.DOTALL)
-                if m:
-                    parsed = json.loads(m.group(0))
-                    for k, v in parsed.items():
-                        result_map[str(k).lower().strip()] = str(v).strip()
-        except Exception:
-            pass
+        for m_name in models[:2]:
+            try:
+                res = requests.post(
+                    f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){m_name}:generateContent?key={gemini_key}",
+                    json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}},
+                    timeout=15
+                )
+                if res.status_code == 200:
+                    raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    m = re.search(r"\{.*\}", raw, re.DOTALL)
+                    if m:
+                        parsed = json.loads(m.group(0))
+                        for k, v in parsed.items():
+                            result_map[str(k).lower().strip()] = str(v).strip()
+                        if result_map:
+                            break
+            except Exception:
+                continue
 
     for w in words_list:
         wl = w.lower().strip()
