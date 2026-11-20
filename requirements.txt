@@ -6,3 +6,4 @@ supabase
 httpx
 youtube-transcript-api
 deep-translator
+yt-dlp
