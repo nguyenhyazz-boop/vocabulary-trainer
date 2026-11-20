@@ -44,29 +44,34 @@ def extract_video_id(url: str):
 def render_uploaded_player(file_bytes: bytes, mime_type: str):
     if not file_bytes:
         return
-    if len(file_bytes) > 20 * 1024 * 1024:
-        st.caption("File > 20MB — đã bóc lời xong (bỏ qua phát trực tiếp để trang mượt).")
+    if len(file_bytes) > 25 * 1024 * 1024:
+        st.caption("File > 25MB — đã bóc băng thành công (ẩn trình phát preview để giữ trang mượt).")
         return
     b64 = base64.b64encode(file_bytes).decode("utf-8")
     safe_mime = mime_type or "video/mp4"
     is_audio = safe_mime.startswith("audio/")
     tag_name = "audio" if is_audio else "video"
-    extra_attrs = (
-        'style="width:100%;margin-top:4px;"'
+    media_style = (
+        "width:100%;display:block;border-radius:10px;"
         if is_audio
-        else 'playsinline style="width:100%;max-height:240px;display:block;background:#1C1917;"'
+        else "width:100%;max-height:245px;display:block;background:#1C1917;"
     )
-    box_style = "padding:10px 12px;background:#FAF8F2;" if is_audio else "background:#1C1917;"
-    box_height = 76 if is_audio else 255
+    wrapper_style = (
+        "padding:10px 12px;background:#FAF8F2;border-radius:14px;border:1px solid #E7E2D6;"
+        if is_audio
+        else "background:#1C1917;border-radius:14px;overflow:hidden;border:1px solid #E7E2D6;"
+    )
+    frame_h = 74 if is_audio else 255
+    playsinline_attr = "" if is_audio else "playsinline"
 
     html_player = f"""
-    <div style="border-radius:14px;overflow:hidden;border:1px solid #E7E2D6;{box_style}">
-        <{tag_name} controls {extra_attrs}>
+    <div style="{wrapper_style}">
+        <{tag_name} controls {playsinline_attr} style="{media_style}">
             <source src="data:{safe_mime};base64,{b64}" type="{safe_mime}">
         </{tag_name}>
     </div>
     """
-    components.html(html_player, height=box_height)
+    components.html(html_player, height=frame_h)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_available_gemini_models(api_key: str) -> list:
@@ -100,7 +105,7 @@ def fetch_youtube_transcript(video_id: str):
                 t_list = api.fetch(video_id, languages=langs)
                 segs = [{"text": s.text, "start": s.start} for s in t_list]
                 if segs:
-                    return segs, "Official / Auto Captions"
+                    return segs, "YouTube CC · EN"
             except Exception:
                 try:
                     transcript_list = api.list(video_id)
@@ -109,13 +114,13 @@ def fetch_youtube_transcript(video_id: str):
                             fetched = tr.fetch()
                             segs = [{"text": s.text, "start": s.start} for s in fetched]
                             if segs:
-                                return segs, f"Captions ({tr.language_code})"
+                                return segs, f"YouTube CC · {tr.language_code}"
                     for tr in transcript_list:
                         try:
                             trans = tr.translate("en").fetch()
                             segs = [{"text": s.text, "start": s.start} for s in trans]
                             if segs:
-                                return segs, "Translated Captions -> EN"
+                                return segs, "Translated CC -> EN"
                         except Exception:
                             continue
                 except Exception:
@@ -125,7 +130,7 @@ def fetch_youtube_transcript(video_id: str):
                 raw = YouTubeTranscriptApi.get_transcript(video_id, languages=langs)
                 segs = [{"text": s["text"], "start": s["start"]} for s in raw]
                 if segs:
-                    return segs, "Official / Auto Captions"
+                    return segs, "YouTube CC · EN"
             except Exception:
                 try:
                     transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
@@ -134,7 +139,7 @@ def fetch_youtube_transcript(video_id: str):
                             trans = tr.translate("en").fetch()
                             segs = [{"text": s["text"], "start": s["start"]} for s in trans]
                             if segs:
-                                return segs, "Translated Captions -> EN"
+                                return segs, "Translated CC -> EN"
                         except Exception:
                             continue
                 except Exception:
@@ -142,47 +147,6 @@ def fetch_youtube_transcript(video_id: str):
     except Exception:
         pass
     return None, None
-
-@st.cache_data(ttl=7200, show_spinner=False)
-def fetch_from_custom_endpoint(video_id: str, yt_url: str, endpoint_url: str, endpoint_key: str):
-    """
-    Gọi endpoint API trung gian do bạn cấu hình trong st.secrets["TRANSCRIPT_API_URL"].
-    Kỳ vọng endpoint trả về JSON dạng:
-      {"segments": [{"start": 0, "text": "..."}, ...]} hoặc danh sách [{"start": 0, "text": "..."}].
-    """
-    if not endpoint_url:
-        return None, None
-    headers = {"Content-Type": "application/json"}
-    if endpoint_key:
-        headers["Authorization"] = f"Bearer {endpoint_key}"
-        headers["X-API-Key"] = endpoint_key
-
-    try:
-        res = requests.post(
-            endpoint_url.strip(),
-            headers=headers,
-            json={"video_id": video_id, "url": yt_url},
-            timeout=35
-        )
-        if res.status_code != 200:
-            return None, f"Endpoint trả về mã {res.status_code}."
-
-        data = res.json()
-        raw_segs = data.get("segments") if isinstance(data, dict) else data
-        if isinstance(raw_segs, list):
-            segments = [
-                {
-                    "start": float(item.get("start", i * 5)),
-                    "text": str(item.get("text", "")).strip()
-                }
-                for i, item in enumerate(raw_segs)
-                if isinstance(item, dict) and str(item.get("text", "")).strip()
-            ]
-            if segments:
-                return segments, None
-        return None, "Endpoint không trả về danh sách segments hợp lệ."
-    except Exception as e:
-        return None, f"Không kết nối được endpoint riêng ({str(e)[:120]})."
 
 def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str, api_key: str):
     if not api_key:
@@ -257,8 +221,8 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
             time.sleep(1.5)
 
         prompt = (
-            "Listen carefully to this media file and transcribe ALL spoken words or song lyrics into English. "
-            "Do NOT make up unrelated content. "
+            "Listen carefully to this media file and transcribe ALL clear spoken English words or song lyrics. "
+            "Keep timestamps accurate in seconds. Do NOT fabricate lyrics. "
             "Return ONLY a JSON array: [{\"start\": 0, \"text\": \"line\"}, ...]."
         )
 
@@ -310,7 +274,7 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
         if lines:
             return [{"start": i * 5, "text": ln} for i, ln in enumerate(lines)], None
 
-        return None, "Không nhận diện được lời thoại tiếng Anh trong file."
+        return None, "Không nhận diện được lời thoại tiếng Anh rõ ràng trong file."
     except Exception as e:
         return None, f"Lỗi xử lý file: {e}"
 
@@ -355,48 +319,75 @@ def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
                 result_map[wl] = ""
     return result_map
 
-# --- CUSTOM CSS: WARM EDITORIAL VIDEO VOCAB ---
+# --- CUSTOM CSS: WARM EDITORIAL & GỌN NÚT ---
 st.markdown("""
 <style>
     .main .block-container {
-        padding-top: 1.7rem;
-        padding-bottom: 3rem;
+        padding-top: 1.6rem;
+        padding-bottom: 2.8rem;
         max-width: 1020px !important;
     }
 
     .editorial-header {
-        background: linear-gradient(135deg, #FAF8F2 0%, #F3EFE4 100%);
+        background: linear-gradient(135deg, #FAF8F2 0%, #F4F0E6 100%);
         border: 1px solid #E7E2D6;
-        border-radius: 22px;
-        padding: 22px 26px;
-        margin-bottom: 18px;
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
     }
     .vid-kicker {
         display: inline-block;
         background-color: #EDE9FE;
         color: #7C3AED;
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         font-weight: 800;
-        letter-spacing: 0.9px;
+        letter-spacing: 0.85px;
         text-transform: uppercase;
-        padding: 4px 10px;
+        padding: 3px 10px;
         border-radius: 999px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     .vid-title {
-        font-size: 2rem;
+        font-size: 1.9rem;
         font-weight: 800;
         color: #1C1917;
-        letter-spacing: -0.6px;
+        letter-spacing: -0.5px;
         line-height: 1.15;
         margin: 0;
     }
     .vid-desc {
         color: #57534E;
-        font-size: 0.95rem;
-        margin-top: 6px;
+        font-size: 0.93rem;
+        margin-top: 5px;
         margin-bottom: 0;
-        line-height: 1.5;
+    }
+
+    /* Nút gọn gàng, đồng bộ Warm Editorial */
+    .stButton > button {
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 0.85rem !important;
+        padding: 0.42rem 0.9rem !important;
+        min-height: 2.35rem !important;
+        transition: all 0.15s ease !important;
+    }
+    .stButton > button[kind="primary"] {
+        background-color: #1C1917 !important;
+        color: #FAF8F2 !important;
+        border: 1px solid #1C1917 !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #332E2B !important;
+        border-color: #332E2B !important;
+    }
+    .stButton > button[kind="secondary"] {
+        background-color: #FAF8F2 !important;
+        color: #1C1917 !important;
+        border: 1px solid #DFD9C8 !important;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background-color: #EFECE3 !important;
+        border-color: #C9C1AE !important;
     }
 
     .meta-strip {
@@ -404,17 +395,16 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 8px;
         align-items: center;
-        margin: 10px 0 12px 0;
+        margin: 10px 0 10px 0;
     }
     .source-pill {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
         background-color: #EDE9FE;
         color: #5B21B6;
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         font-weight: 700;
-        padding: 4px 11px;
+        padding: 3px 10px;
         border-radius: 999px;
     }
     .saved-pill {
@@ -422,21 +412,21 @@ st.markdown("""
         background-color: #FEF9C3;
         color: #854D0E;
         border: 1px solid #FDE047;
-        font-size: 0.74rem;
+        font-size: 0.73rem;
         font-weight: 800;
-        padding: 4px 10px;
+        padding: 3px 9px;
         border-radius: 999px;
     }
 
     .transcript-box {
         background-color: #FAF8F2;
         border: 1px solid #E7E2D6;
-        border-radius: 16px;
-        padding: 15px 17px;
-        max-height: 365px;
+        border-radius: 14px;
+        padding: 14px 16px;
+        max-height: 360px;
         overflow-y: auto;
-        line-height: 1.75;
-        font-size: 0.96rem;
+        line-height: 1.72;
+        font-size: 0.95rem;
         color: #1C1917;
     }
     .transcript-line {
@@ -450,7 +440,7 @@ st.markdown("""
         display: inline-block;
         background-color: #EDE9FE;
         color: #7C3AED;
-        font-size: 0.74rem;
+        font-size: 0.73rem;
         font-weight: 800;
         padding: 1px 7px;
         border-radius: 6px;
@@ -459,10 +449,10 @@ st.markdown("""
     }
 
     .word-chip-label {
-        font-size: 0.96rem;
+        font-size: 0.94rem;
         font-weight: 700;
         color: #1C1917;
-        padding-top: 7px;
+        padding-top: 6px;
     }
 
     span[data-baseweb="tag"] {
@@ -479,9 +469,9 @@ st.markdown("""
 
 st.markdown("""
 <div class="editorial-header">
-    <div class="vid-kicker">Editorial Media & Vocab Studio</div>
+    <div class="vid-kicker">Video & Audio Vocab</div>
     <h1 class="vid-title">YouTube Video Vocab</h1>
-    <p class="vid-desc">Dán link YouTube (hỗ trợ CC trực tiếp hoặc qua endpoint riêng nếu cấu hình), hoặc tải file audio/video lên (MP3, M4A, MP4) để bóc lời và nhặt từ vựng.</p>
+    <p class="vid-desc">Dán link YouTube lấy phụ đề nhanh (bị chặn thì bỏ qua), hoặc upload video/audio có âm thanh rõ để bóc lời và lưu từ vựng.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -491,8 +481,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 username = st.session_state.username
 gemini_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
-endpoint_url = st.secrets.get("TRANSCRIPT_API_URL", "").strip()
-endpoint_key = st.secrets.get("TRANSCRIPT_API_KEY", "").strip()
 
 vocab_data = load_data(f"data_vocab_{username}.json")
 colloc_data = load_data(f"data_collocation_{username}.json")
@@ -506,16 +494,17 @@ for k, default_v in [
     ("vv_segments", []),
     ("vv_source", ""),
     ("vv_video_id", None),
-    ("vv_notice", ""),
+    ("vv_skipped_link", False),
     ("vv_uploaded_bytes", b""),
     ("vv_uploaded_mime", ""),
 ]:
     if k not in st.session_state:
         st.session_state[k] = default_v
 
+# --- 1. LINK YOUTUBE (BỊ CHẶN THÌ THÔI) ---
 with st.container(border=True):
-    st.caption("STEP 1 · YOUTUBE LINK (CC & CUSTOM ENDPOINT)")
-    col_url, col_btn = st.columns([4, 1.25], gap="small")
+    st.caption("LINK YOUTUBE")
+    col_url, col_btn = st.columns([4.3, 1.1], gap="small")
     with col_url:
         yt_url = st.text_input(
             "Link YouTube",
@@ -523,120 +512,101 @@ with st.container(border=True):
             label_visibility="collapsed"
         )
     with col_btn:
-        extract_clicked = st.button("Bóc lời từ link  ↗", type="primary", use_container_width=True)
+        extract_clicked = st.button("Lấy lời  ↗", type="primary", use_container_width=True)
 
 parsed_vid = extract_video_id(yt_url.strip()) if yt_url else None
 if yt_url and not parsed_vid:
-    st.error("Link YouTube chưa đúng định dạng. Hãy kiểm tra lại đường dẫn nhé!")
+    st.error("Link YouTube chưa đúng định dạng.")
     st.stop()
 
 if parsed_vid and (extract_clicked or parsed_vid != st.session_state.vv_video_id):
     st.session_state.vv_video_id = parsed_vid
     st.session_state.vv_uploaded_bytes = b""
     st.session_state.vv_uploaded_mime = ""
-    st.session_state.vv_notice = ""
+    st.session_state.vv_skipped_link = False
 
-    with st.spinner("Đang kiểm tra phụ đề CC từ YouTube..."):
+    with st.spinner("Đang kiểm tra phụ đề..."):
         cc_segments, cc_mode = fetch_youtube_transcript(parsed_vid)
 
     if cc_segments:
         st.session_state.vv_segments = cc_segments
         st.session_state.vv_source = cc_mode
-    elif endpoint_url:
-        with st.spinner("Đang gọi endpoint API riêng để lấy lời..."):
-            ep_segments, ep_err = fetch_from_custom_endpoint(parsed_vid, yt_url.strip(), endpoint_url, endpoint_key)
-        if ep_segments:
-            st.session_state.vv_segments = ep_segments
-            st.session_state.vv_source = "Custom Endpoint API"
-        else:
-            st.session_state.vv_segments = []
-            st.session_state.vv_source = ""
-            st.session_state.vv_notice = (
-                f"{ep_err or 'Endpoint riêng không lấy được lời.'} "
-                "Bạn có thể tải file audio/video lên hoặc dán lời thủ công ở mục bên dưới."
-            )
     else:
         st.session_state.vv_segments = []
         st.session_state.vv_source = ""
-        st.session_state.vv_notice = (
-            "Link này không lấy được phụ đề CC tự động trên Cloud. "
-            "Bạn có thể tải file audio/video về máy rồi upload ở mục bên dưới (hoặc dán lời thủ công) để bóc lời nhé!"
-        )
+        st.session_state.vv_skipped_link = True
 
-if st.session_state.vv_notice:
-    st.warning(st.session_state.vv_notice)
+if st.session_state.vv_skipped_link and not st.session_state.vv_segments:
+    st.info("Link này không lấy được phụ đề tự động — bỏ qua link và dùng phần upload video/audio có âm thanh rõ bên dưới nhé.")
 
-with st.expander("STEP 2 · Tải file audio/video lên (MP3, M4A, WAV, MP4, WEBM) hoặc dán lời thủ công", expanded=bool(st.session_state.vv_notice) or not bool(st.session_state.vv_segments)):
+# --- 2. UPLOAD VIDEO / AUDIO CÓ ÂM THANH RÕ ---
+with st.container(border=True):
+    st.caption("UPLOAD VIDEO / AUDIO")
     up_audio = st.file_uploader(
-        "Chọn file âm thanh hoặc video từ thiết bị để Gemini AI bóc băng:",
-        type=["mp3", "m4a", "wav", "mp4", "webm"]
+        "Chọn video hoặc audio có tiếng rõ (MP4, MP3, M4A, WAV, WEBM):",
+        type=["mp4", "mp3", "m4a", "wav", "webm"],
+        label_visibility="collapsed"
     )
-    if up_audio is not None and st.button("Bóc băng bằng Gemini AI", type="primary"):
-        raw_bytes = up_audio.getvalue()
-        ext = os.path.splitext(up_audio.name)[1].lower()
-        ext_mime = {
-            ".mp4": "video/mp4",
-            ".webm": "video/webm",
-            ".m4a": "audio/mp4",
-            ".mp3": "audio/mpeg",
-            ".wav": "audio/wav",
-            ".ogg": "audio/ogg",
-        }
-        resolved_mime = ext_mime.get(ext, up_audio.type or "video/mp4")
+    if up_audio is not None:
+        c_act, c_hint = st.columns([1.4, 3.6], gap="small")
+        with c_act:
+            transcribe_clicked = st.button("Bóc lời ngay", type="primary", use_container_width=True)
+        with c_hint:
+            st.caption(f"File: {up_audio.name}")
 
-        with st.spinner("Gemini AI đang nghe và chép lời từ file của bạn..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext or ".mp4") as tmp:
-                tmp.write(raw_bytes)
-                tmp_path = tmp.name
-            try:
-                segs, up_err = upload_and_transcribe_file(
-                    tmp_path,
-                    resolved_mime,
-                    up_audio.name,
-                    gemini_api_key
-                )
-                if segs:
-                    st.session_state.vv_segments = segs
-                    st.session_state.vv_source = f"Gemini AI · {up_audio.name}"
-                    st.session_state.vv_uploaded_bytes = raw_bytes
-                    st.session_state.vv_uploaded_mime = resolved_mime
-                    st.session_state.vv_notice = ""
-                    st.rerun()
-                else:
-                    st.error(up_err or "Không thể bóc băng file này.")
-            finally:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+        if transcribe_clicked:
+            raw_bytes = up_audio.getvalue()
+            ext = os.path.splitext(up_audio.name)[1].lower()
+            ext_mime = {
+                ".mp4": "video/mp4",
+                ".webm": "video/webm",
+                ".m4a": "audio/mp4",
+                ".mp3": "audio/mpeg",
+                ".wav": "audio/wav",
+                ".ogg": "audio/ogg",
+            }
+            resolved_mime = ext_mime.get(ext, up_audio.type or "video/mp4")
 
-    manual_script = st.text_area(
-        "Hoặc dán trực tiếp lời bài hát / lời thoại tiếng Anh:",
-        placeholder="Paste English lyrics or script here...",
-        height=110
-    )
-    if manual_script.strip():
-        lines = [line.strip() for line in re.split(r"\n+", manual_script.strip()) if line.strip()]
-        st.session_state.vv_segments = [{"text": line, "start": i * 5} for i, line in enumerate(lines)]
-        st.session_state.vv_source = "Manual Script"
-        st.session_state.vv_notice = ""
+            with st.spinner("Đang nghe âm thanh và bóc lời..."):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=ext or ".mp4") as tmp:
+                    tmp.write(raw_bytes)
+                    tmp_path = tmp.name
+                try:
+                    segs, up_err = upload_and_transcribe_file(
+                        tmp_path,
+                        resolved_mime,
+                        up_audio.name,
+                        gemini_api_key
+                    )
+                    if segs:
+                        st.session_state.vv_segments = segs
+                        st.session_state.vv_source = f"Audio/Video · {up_audio.name}"
+                        st.session_state.vv_uploaded_bytes = raw_bytes
+                        st.session_state.vv_uploaded_mime = resolved_mime
+                        st.session_state.vv_skipped_link = False
+                        st.rerun()
+                    else:
+                        st.error(up_err or "Không bóc được lời từ file này.")
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
 
 segments = st.session_state.vv_segments
 source_label = st.session_state.vv_source
 video_id = st.session_state.vv_video_id
 
+# --- 3. TRÌNH PHÁT + TRANSCRIPT & NHẶT TỪ VỰNG ---
 if segments:
     full_text = " ".join(seg["text"].replace("\n", " ") for seg in segments)
     left_col, right_col = st.columns([1.15, 1], gap="large")
 
     with left_col:
         with st.container(border=True):
-            st.caption("PLAYER & TRANSCRIPT")
+            st.caption("MEDIA & SCRIPT")
             if st.session_state.vv_uploaded_bytes:
                 render_uploaded_player(st.session_state.vv_uploaded_bytes, st.session_state.vv_uploaded_mime)
             elif video_id:
-                components.iframe(
-                    f"[https://www.youtube.com/embed/](https://www.youtube.com/embed/){video_id}",
-                    height=245
-                )
+                components.iframe(f"[https://www.youtube.com/embed/](https://www.youtube.com/embed/){video_id}", height=240)
 
             if source_label:
                 st.markdown(
@@ -652,8 +622,8 @@ if segments:
 
     with right_col:
         with st.container(border=True):
-            st.caption("VOCABULARY PICKER")
-            st.markdown("#### Nhặt từ vựng vào kho học")
+            st.caption("VOCAB PICKER")
+            st.markdown("#### Nhặt từ vào kho")
 
             raw_words = re.findall(r"\b[a-zA-Z]{4,}\b", full_text.lower())
             word_counts = Counter(w for w in raw_words if w not in STOPWORDS and w not in user_all_words)
@@ -661,44 +631,44 @@ if segments:
 
             default_picks = suggested_words[:3] if len(suggested_words) >= 3 else suggested_words
             selected_from_list = st.multiselect(
-                "1. Chọn từ hay hệ thống lọc được:",
+                "Chọn từ gợi ý:",
                 options=suggested_words,
                 default=default_picks
             )
 
             custom_phrase = st.text_input(
-                "2. Hoặc nhập từ / cụm từ (Collocation) bạn thấy hay:",
-                placeholder="vd: beauty and a beat, take into account..."
+                "Hoặc nhập từ / cụm từ hay:",
+                placeholder="vd: take it easy, figure out..."
             )
 
             words_to_process = list(dict.fromkeys(
                 selected_from_list + ([custom_phrase.strip().lower()] if custom_phrase.strip() else [])
             ))
 
-            topic_name = st.text_input("Chủ đề lưu trong kho:", value="YouTube Video")
+            topic_name = st.text_input("Chủ đề:", value="Video Vocab")
 
             if words_to_process:
                 st.divider()
-                st.caption("KIỂM TRA NGHĨA TIẾNG VIỆT TRƯỚC KHI LƯU")
+                st.caption("NGHĨA TIẾNG VIỆT")
                 vi_map = translate_words_batch_vi(tuple(words_to_process), gemini_api_key)
 
                 for idx, w in enumerate(words_to_process):
                     auto_vi = vi_map.get(w.lower().strip(), "")
-                    c1, c2, c3 = st.columns([1.25, 2.1, 1], gap="small")
+                    c1, c2, c3 = st.columns([1.2, 2.15, 0.95], gap="small")
                     with c1:
                         st.markdown(f'<div class="word-chip-label">{w}</div>', unsafe_allow_html=True)
                     with c2:
                         edited_vi = st.text_input(
                             f"Nghĩa của {w}",
                             value=auto_vi,
-                            key=f"vi_{video_id or 'manual'}_{w}_{idx}",
+                            key=f"vi_{video_id or 'up'}_{w}_{idx}",
                             label_visibility="collapsed"
                         )
                     with c3:
                         if w in user_all_words:
                             st.markdown('<span class="saved-pill">Saved</span>', unsafe_allow_html=True)
                         else:
-                            if st.button("Save", key=f"save_{video_id or 'manual'}_{w}_{idx}", use_container_width=True):
+                            if st.button("Lưu", key=f"save_{video_id or 'up'}_{w}_{idx}", use_container_width=True):
                                 is_phrase = " " in w.strip()
                                 target_file = f"data_collocation_{username}.json" if is_phrase else f"data_vocab_{username}.json"
                                 repo = load_data(target_file)
@@ -706,14 +676,12 @@ if segments:
                                     repo = {}
                                 repo[w] = {
                                     "meaning": edited_vi.strip() or auto_vi,
-                                    "topic": topic_name.strip() or "YouTube Video",
+                                    "topic": topic_name.strip() or "Video Vocab",
                                     "correct": 0,
                                     "wrong": 0
                                 }
                                 save_data(repo, target_file)
-                                st.toast(f"Đã lưu '{w}' vào kho!")
+                                st.toast(f"Đã lưu '{w}'")
                                 st.rerun()
             else:
-                st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ đoạn lời bên trái.")
-else:
-    st.info("Dán link YouTube có phụ đề CC (hoặc bật endpoint riêng trong Secrets) hoặc tải file audio/video ở trên để bắt đầu.")
+                st.info("Chọn từ hoặc nhập cụm từ để lưu.")
