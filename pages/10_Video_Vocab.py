@@ -143,6 +143,47 @@ def fetch_youtube_transcript(video_id: str):
         pass
     return None, None
 
+@st.cache_data(ttl=7200, show_spinner=False)
+def fetch_from_custom_endpoint(video_id: str, yt_url: str, endpoint_url: str, endpoint_key: str):
+    """
+    Gọi endpoint API trung gian do bạn cấu hình trong st.secrets["TRANSCRIPT_API_URL"].
+    Kỳ vọng endpoint trả về JSON dạng:
+      {"segments": [{"start": 0, "text": "..."}, ...]} hoặc danh sách [{"start": 0, "text": "..."}].
+    """
+    if not endpoint_url:
+        return None, None
+    headers = {"Content-Type": "application/json"}
+    if endpoint_key:
+        headers["Authorization"] = f"Bearer {endpoint_key}"
+        headers["X-API-Key"] = endpoint_key
+
+    try:
+        res = requests.post(
+            endpoint_url.strip(),
+            headers=headers,
+            json={"video_id": video_id, "url": yt_url},
+            timeout=35
+        )
+        if res.status_code != 200:
+            return None, f"Endpoint trả về mã {res.status_code}."
+
+        data = res.json()
+        raw_segs = data.get("segments") if isinstance(data, dict) else data
+        if isinstance(raw_segs, list):
+            segments = [
+                {
+                    "start": float(item.get("start", i * 5)),
+                    "text": str(item.get("text", "")).strip()
+                }
+                for i, item in enumerate(raw_segs)
+                if isinstance(item, dict) and str(item.get("text", "")).strip()
+            ]
+            if segments:
+                return segments, None
+        return None, "Endpoint không trả về danh sách segments hợp lệ."
+    except Exception as e:
+        return None, f"Không kết nối được endpoint riêng ({str(e)[:120]})."
+
 def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str, api_key: str):
     if not api_key:
         return None, "Chưa cấu hình GEMINI_API_KEY trong Secrets."
@@ -440,7 +481,7 @@ st.markdown("""
 <div class="editorial-header">
     <div class="vid-kicker">Editorial Media & Vocab Studio</div>
     <h1 class="vid-title">YouTube Video Vocab</h1>
-    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để nghe/xem, bóc lời và nhặt từ vựng.</p>
+    <p class="vid-desc">Dán link YouTube (hỗ trợ CC trực tiếp hoặc qua endpoint riêng nếu cấu hình), hoặc tải file audio/video lên (MP3, M4A, MP4) để bóc lời và nhặt từ vựng.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -450,6 +491,8 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 
 username = st.session_state.username
 gemini_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
+endpoint_url = st.secrets.get("TRANSCRIPT_API_URL", "").strip()
+endpoint_key = st.secrets.get("TRANSCRIPT_API_KEY", "").strip()
 
 vocab_data = load_data(f"data_vocab_{username}.json")
 colloc_data = load_data(f"data_collocation_{username}.json")
@@ -471,7 +514,7 @@ for k, default_v in [
         st.session_state[k] = default_v
 
 with st.container(border=True):
-    st.caption("STEP 1 · YOUTUBE LINK (AUTO CC)")
+    st.caption("STEP 1 · YOUTUBE LINK (CC & CUSTOM ENDPOINT)")
     col_url, col_btn = st.columns([4, 1.25], gap="small")
     with col_url:
         yt_url = st.text_input(
@@ -480,7 +523,7 @@ with st.container(border=True):
             label_visibility="collapsed"
         )
     with col_btn:
-        extract_clicked = st.button("Bóc phụ đề CC  ↗", type="primary", use_container_width=True)
+        extract_clicked = st.button("Bóc lời từ link  ↗", type="primary", use_container_width=True)
 
 parsed_vid = extract_video_id(yt_url.strip()) if yt_url else None
 if yt_url and not parsed_vid:
@@ -499,12 +542,25 @@ if parsed_vid and (extract_clicked or parsed_vid != st.session_state.vv_video_id
     if cc_segments:
         st.session_state.vv_segments = cc_segments
         st.session_state.vv_source = cc_mode
+    elif endpoint_url:
+        with st.spinner("Đang gọi endpoint API riêng để lấy lời..."):
+            ep_segments, ep_err = fetch_from_custom_endpoint(parsed_vid, yt_url.strip(), endpoint_url, endpoint_key)
+        if ep_segments:
+            st.session_state.vv_segments = ep_segments
+            st.session_state.vv_source = "Custom Endpoint API"
+        else:
+            st.session_state.vv_segments = []
+            st.session_state.vv_source = ""
+            st.session_state.vv_notice = (
+                f"{ep_err or 'Endpoint riêng không lấy được lời.'} "
+                "Bạn có thể tải file audio/video lên hoặc dán lời thủ công ở mục bên dưới."
+            )
     else:
         st.session_state.vv_segments = []
         st.session_state.vv_source = ""
         st.session_state.vv_notice = (
             "Link này không lấy được phụ đề CC tự động trên Cloud. "
-            "Hãy tải video/audio về máy rồi upload ở mục bên dưới (hoặc dán lời thủ công) để bóc lời nhé!"
+            "Bạn có thể tải file audio/video về máy rồi upload ở mục bên dưới (hoặc dán lời thủ công) để bóc lời nhé!"
         )
 
 if st.session_state.vv_notice:
@@ -660,4 +716,4 @@ if segments:
             else:
                 st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ đoạn lời bên trái.")
 else:
-    st.info("Dán link YouTube có phụ đề CC hoặc mở mục tải file audio/video ở trên để bắt đầu.")
+    st.info("Dán link YouTube có phụ đề CC (hoặc bật endpoint riêng trong Secrets) hoặc tải file audio/video ở trên để bắt đầu.")
