@@ -1,7 +1,5 @@
 import re
 import json
-import urllib.parse
-import requests
 from collections import Counter
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -22,8 +20,7 @@ STOPWORDS = {
     "well", "way", "even", "new", "want", "because", "any", "these", "give",
     "day", "most", "are", "was", "were", "been", "has", "had", "did", "does",
     "doing", "very", "more", "much", "many", "such", "those", "being", "here",
-    "why", "where", "each", "both", "few", "own", "same", "too", "every",
-    "video", "explore", "concepts", "practical", "communication", "skills", "everyday", "expressions"
+    "why", "where", "each", "both", "few", "own", "same", "too", "every"
 }
 
 def extract_video_id(url: str):
@@ -42,6 +39,7 @@ def call_gemini_text(prompt: str, api_key: str) -> str:
     if not api_key:
         return ""
     try:
+        import requests
         list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
         list_res = requests.get(list_url, timeout=10)
         exclude_kw = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
@@ -61,7 +59,7 @@ def call_gemini_text(prompt: str, api_key: str) -> str:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.4}
+                    "generationConfig": {"temperature": 0.3}
                 }
                 res = requests.post(url, json=payload, timeout=20)
                 if res.status_code == 200:
@@ -83,7 +81,7 @@ def fetch_youtube_transcript(video_id: str):
                 transcript_list = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
                 segments = [{"text": s.text, "start": s.start} for s in transcript_list]
                 if segments:
-                    return segments, "cc_en"
+                    return segments, "Official / Auto Captions"
             except Exception:
                 transcript_obj = api.list(video_id)
                 for tr in transcript_obj:
@@ -91,7 +89,7 @@ def fetch_youtube_transcript(video_id: str):
                         translated = tr.translate("en").fetch()
                         segments = [{"text": s.text, "start": s.start} for s in translated]
                         if segments:
-                            return segments, "cc_translated"
+                            return segments, "Translated Captions -> EN"
                     except Exception:
                         continue
         else:
@@ -99,7 +97,7 @@ def fetch_youtube_transcript(video_id: str):
                 raw = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
                 segments = [{"text": s["text"], "start": s["start"]} for s in raw]
                 if segments:
-                    return segments, "cc_en"
+                    return segments, "Official / Auto Captions"
             except Exception:
                 transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
                 for tr in transcript_list:
@@ -107,48 +105,12 @@ def fetch_youtube_transcript(video_id: str):
                         translated = tr.translate("en").fetch()
                         segments = [{"text": s["text"], "start": s["start"]} for s in translated]
                         if segments:
-                            return segments, "cc_translated"
+                            return segments, "Translated Captions -> EN"
                     except Exception:
                         continue
     except Exception:
         pass
     return None, None
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_video_metadata(video_id: str, yt_api_key: str):
-    title = ""
-    desc = ""
-    if yt_api_key:
-        try:
-            api_url = (
-                f"https://www.googleapis.com/youtube/v3/videos"
-                f"?part=snippet&id={urllib.parse.quote(video_id)}&key={urllib.parse.quote(yt_api_key)}"
-            )
-            r = requests.get(api_url, timeout=10)
-            if r.status_code == 200:
-                items = r.json().get("items", [])
-                if items:
-                    snip = items[0].get("snippet", {})
-                    title = snip.get("title", "")
-                    desc = snip.get("description", "")
-        except Exception:
-            pass
-
-    if not title:
-        try:
-            watch_url = f"https://www.youtube.com/watch?v={video_id}"
-            resp = requests.get(watch_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-            if resp.status_code == 200:
-                m_title = re.search(r"<title>(.*?)</title>", resp.text, re.DOTALL)
-                if m_title:
-                    title = re.sub(r"\s*-\s*YouTube\s*$", "", m_title.group(1)).strip()
-                m_desc = re.search(r'"shortDescription":"(.*?)"', resp.text)
-                if m_desc:
-                    desc = m_desc.group(1).encode("utf-8").decode("unicode_escape", errors="ignore")
-        except Exception:
-            pass
-
-    return title, desc[:800]
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
@@ -173,7 +135,6 @@ def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
             except Exception:
                 pass
 
-    # Dự phòng GoogleTranslator cho từ còn thiếu
     for w in words_list:
         wl = w.lower().strip()
         if not result_map.get(wl):
@@ -266,9 +227,9 @@ st.markdown("""
 
 st.markdown("""
 <div>
-    <div class="vid-sub">Video Transcript & Vocabulary Extractor</div>
+    <div class="vid-sub">Video Transcript & Lyrics Vocab</div>
     <div class="vid-title">YouTube Video Vocab</div>
-    <div class="vid-desc">Dán link YouTube bất kỳ để bóc lời thoại, tự động dịch nghĩa tiếng Việt và lưu vào kho từ vựng</div>
+    <div class="vid-desc">Lấy phụ đề CC thật từ video YouTube hoặc dán lời bài hát / lời thoại để lọc từ vựng chính xác</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -277,7 +238,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.stop()
 
 username = st.session_state.username
-yt_api_key = st.secrets.get("YOUTUBE_API_KEY", "").strip()
 gemini_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 vocab_data = load_data(f"data_vocab_{username}.json")
@@ -297,10 +257,11 @@ with col_url:
         label_visibility="collapsed"
     )
 with col_btn:
-    st.button("Extract Script  ↗", type="primary", use_container_width=True)
+    st.button("Load Video  ↗", type="primary", use_container_width=True)
 
 segments = []
 source_label = ""
+cc_missing = False
 video_id = extract_video_id(yt_url.strip()) if yt_url else None
 
 if yt_url and not video_id:
@@ -308,40 +269,26 @@ if yt_url and not video_id:
     st.stop()
 
 if video_id:
-    with st.spinner("Đang trích xuất lời thoại từ video..."):
-        cc_segments, mode_used = fetch_youtube_transcript(video_id)
-
+    with st.spinner("Đang kiểm tra phụ đề CC từ YouTube..."):
+        cc_segments, cc_mode = fetch_youtube_transcript(video_id)
     if cc_segments:
         segments = cc_segments
-        source_label = "Official / Auto Captions" if mode_used == "cc_en" else "Translated Captions -> EN"
+        source_label = cc_mode
     else:
-        v_title, v_desc = fetch_video_metadata(video_id, yt_api_key)
-        topic_context = f"Title: {v_title}\nDescription: {v_desc}" if (v_title or v_desc) else f"YouTube Video ID: {video_id}"
-        ai_prompt = (
-            f"Create a realistic English spoken transcript or song/dialogue script (around 140 words) "
-            f"matching this video:\n{topic_context}\n"
-            f"Use rich, practical English vocabulary. Return ONLY plain English text."
-        )
-        ai_script = call_gemini_text(ai_prompt, gemini_api_key)
-        if not ai_script:
-            ai_script = (
-                f"{v_title or 'This video'} focuses on rhythm, energy, and connection. "
-                f"Listeners experience strong beats, vivid imagery, and expressive phrasing throughout the track."
-            )
-        lines = [line.strip() for line in re.split(r"(?<=[.!?])\s+|\n+", ai_script) if line.strip()]
-        segments = [{"text": line, "start": i * 8} for i, line in enumerate(lines)]
-        source_label = "AI Script Generator (No CC / Blocked)"
+        cc_missing = True
 
-with st.expander("Dán lời thoại / lời bài hát thủ công (khuyên dùng cho MV hoặc video không có CC)", expanded=not bool(segments)):
+with st.expander("Dán lời bài hát (Lyrics) hoặc lời thoại thủ công", expanded=cc_missing or not bool(segments)):
+    if cc_missing:
+        st.info("Video/bài hát này chưa có phụ đề CC tự động hoặc bị YouTube chặn lấy phụ đề trên Cloud. Hãy dán lời bài hát / lời thoại vào ô dưới để lọc từ vựng chuẩn xác nhất!")
     manual_script = st.text_area(
-        "Dán lời thoại hoặc lyrics tiếng Anh vào đây:",
-        placeholder="Paste English lyrics or transcript here...",
-        height=115
+        "Dán lyrics hoặc transcript tiếng Anh vào đây:",
+        placeholder="Paste song lyrics or transcript here...",
+        height=130
     )
     if manual_script.strip():
-        lines = [line.strip() for line in re.split(r"(?<=[.!?])\s+|\n+", manual_script.strip()) if line.strip()]
-        segments = [{"text": line, "start": i * 6} for i, line in enumerate(lines)]
-        source_label = "Custom Pasted Lyrics / Script"
+        lines = [line.strip() for line in re.split(r"\n+", manual_script.strip()) if line.strip()]
+        segments = [{"text": line, "start": i * 5} for i, line in enumerate(lines)]
+        source_label = "Manual Lyrics / Transcript"
 
 if segments:
     full_text = " ".join(seg["text"].replace("\n", " ") for seg in segments)
@@ -366,7 +313,7 @@ if segments:
             st.caption("VOCABULARY PICKER")
             st.markdown("#### Nhặt từ vựng vào kho học")
 
-            raw_words = re.findall(r"\b[a-zA-Z]{5,}\b", full_text.lower())
+            raw_words = re.findall(r"\b[a-zA-Z]{4,}\b", full_text.lower())
             word_counts = Counter(w for w in raw_words if w not in STOPWORDS and w not in user_all_words)
             suggested_words = [w for w, _ in word_counts.most_common(40)]
 
@@ -379,7 +326,7 @@ if segments:
 
             custom_phrase = st.text_input(
                 "2. Hoặc nhập từ / cụm từ (Collocation) bạn thấy hay:",
-                placeholder="e.g. take into account, sustainable..."
+                placeholder="e.g. beauty and a beat, take into account..."
             )
 
             words_to_process = list(dict.fromkeys(
@@ -425,6 +372,6 @@ if segments:
                                 st.toast(f"Đã lưu '{w}' vào kho!")
                                 st.rerun()
             else:
-                st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ đoạn thoại bên trái.")
+                st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ phần lời bên trái.")
 else:
-    st.info("Hãy dán một đường dẫn video YouTube vào ô phía trên hoặc mở phần dán lời thoại thủ công để bắt đầu.")
+    st.info("Hãy dán link YouTube có phụ đề CC hoặc mở phần dán lời bài hát / lời thoại thủ công để bắt đầu.")
