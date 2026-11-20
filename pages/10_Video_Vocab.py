@@ -1,5 +1,9 @@
+import os
 import re
 import json
+import time
+import tempfile
+import requests
 from collections import Counter
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -35,42 +39,24 @@ def extract_video_id(url: str):
             return match.group(1)
     return None
 
-def call_gemini_text(prompt: str, api_key: str) -> str:
-    if not api_key:
-        return ""
+def get_best_gemini_model(api_key: str) -> str:
     try:
-        import requests
-        list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-        list_res = requests.get(list_url, timeout=10)
-        exclude_kw = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
-        candidates = []
-        if list_res.status_code == 200:
-            for m in list_res.json().get("models", []):
-                m_name = m.get("name", "")
-                if "generateContent" in m.get("supportedGenerationMethods", []):
-                    if "gemini" in m_name.lower() and not any(k in m_name.lower() for k in exclude_kw):
-                        candidates.append(m_name.replace("models/", ""))
-        candidates.sort(key=lambda x: (0 if "flash" in x else 1, x))
-        if not candidates:
-            candidates = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-
-        for model_name in candidates[:4]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.3}
-                }
-                res = requests.post(url, json=payload, timeout=20)
-                if res.status_code == 200:
-                    text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    if text:
-                        return text
-            except Exception:
-                continue
+        res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}", timeout=10)
+        if res.status_code == 200:
+            exclude = ("exp", "thinking", "audio", "image", "tts", "vision", "embedding", "aqa")
+            models = [
+                m["name"].replace("models/", "")
+                for m in res.json().get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+                and "gemini" in m.get("name", "").lower()
+                and not any(k in m.get("name", "").lower() for k in exclude)
+            ]
+            models.sort(key=lambda x: (0 if "flash" in x else 1, x))
+            if models:
+                return models[0]
     except Exception:
         pass
-    return ""
+    return "gemini-2.5-flash"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_youtube_transcript(video_id: str):
@@ -78,62 +64,209 @@ def fetch_youtube_transcript(video_id: str):
         if hasattr(YouTubeTranscriptApi, "fetch"):
             api = YouTubeTranscriptApi()
             try:
-                transcript_list = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
-                segments = [{"text": s.text, "start": s.start} for s in transcript_list]
-                if segments:
-                    return segments, "Official / Auto Captions"
+                t_list = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
+                segs = [{"text": s.text, "start": s.start} for s in t_list]
+                if segs:
+                    return segs, "Official / Auto Captions"
             except Exception:
-                transcript_obj = api.list(video_id)
-                for tr in transcript_obj:
+                for tr in api.list(video_id):
                     try:
-                        translated = tr.translate("en").fetch()
-                        segments = [{"text": s.text, "start": s.start} for s in translated]
-                        if segments:
-                            return segments, "Translated Captions -> EN"
+                        trans = tr.translate("en").fetch()
+                        segs = [{"text": s.text, "start": s.start} for s in trans]
+                        if segs:
+                            return segs, "Translated Captions -> EN"
                     except Exception:
                         continue
         else:
             try:
                 raw = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
-                segments = [{"text": s["text"], "start": s["start"]} for s in raw]
-                if segments:
-                    return segments, "Official / Auto Captions"
+                segs = [{"text": s["text"], "start": s["start"]} for s in raw]
+                if segs:
+                    return segs, "Official / Auto Captions"
             except Exception:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                for tr in transcript_list:
+                for tr in YouTubeTranscriptApi.list_transcripts(video_id):
                     try:
-                        translated = tr.translate("en").fetch()
-                        segments = [{"text": s["text"], "start": s["start"]} for s in translated]
-                        if segments:
-                            return segments, "Translated Captions -> EN"
+                        trans = tr.translate("en").fetch()
+                        segs = [{"text": s["text"], "start": s["start"]} for s in trans]
+                        if segs:
+                            return segs, "Translated Captions -> EN"
                     except Exception:
                         continue
     except Exception:
         pass
     return None, None
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def transcribe_audio_with_gemini(video_id: str, api_key: str):
+    if not api_key:
+        return None, "Chưa cấu hình GEMINI_API_KEY trong Secrets."
+
+    try:
+        import yt_dlp
+    except ImportError:
+        return None, "Thiếu thư viện yt-dlp trong requirements.txt."
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_tpl = os.path.join(tmpdir, "audio.%(ext)s")
+        ydl_opts = {
+            "format": "worstaudio[ext=m4a]/worstaudio/bestaudio",
+            "outtmpl": out_tpl,
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            "max_filesize": 25 * 1024 * 1024,  # Giới hạn 25MB tránh treo RAM
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "web"]
+                }
+            }
+        }
+
+        audio_path = None
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            for f in os.listdir(tmpdir):
+                if f.startswith("audio."):
+                    audio_path = os.path.join(tmpdir, f)
+                    break
+        except Exception as e:
+            return None, f"YouTube chặn tải luồng audio từ server Cloud ({e})."
+
+        if not audio_path or not os.path.exists(audio_path):
+            return None, "Không tải được file âm thanh của video này (video quá dài hoặc bị giới hạn bản quyền)."
+
+        ext = os.path.splitext(audio_path)[1].lower()
+        mime_map = {".m4a": "audio/mp4", ".mp3": "audio/mp3", ".webm": "audio/webm", ".ogg": "audio/ogg", ".opus": "audio/opus"}
+        mime_type = mime_map.get(ext, "audio/mp4")
+        file_size = os.path.getsize(audio_path)
+
+        # Upload file lên Gemini File API
+        try:
+            init_headers = {
+                "X-Goog-Upload-Protocol": "resumable",
+                "X-Goog-Upload-Command": "start",
+                "X-Goog-Upload-Header-Content-Length": str(file_size),
+                "X-Goog-Upload-Header-Content-Type": mime_type,
+                "Content-Type": "application/json",
+            }
+            init_res = requests.post(
+                f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}",
+                headers=init_headers,
+                json={"file": {"display_name": f"yt_{video_id}"}},
+                timeout=20
+            )
+            upload_url = init_res.headers.get("X-Goog-Upload-URL")
+            if not upload_url:
+                return None, "Không khởi tạo được kết nối upload audio lên Gemini."
+
+            with open(audio_path, "rb") as f_bin:
+                up_res = requests.post(
+                    upload_url,
+                    headers={
+                        "Content-Length": str(file_size),
+                        "X-Goog-Upload-Offset": "0",
+                        "X-Goog-Upload-Command": "upload, finalize",
+                    },
+                    data=f_bin,
+                    timeout=60
+                )
+            file_info = up_res.json().get("file", {})
+            file_uri = file_info.get("uri")
+            file_name = file_info.get("name")
+            if not file_uri:
+                return None, "Upload audio lên Gemini thất bại."
+
+            # Chờ file xử lý xong (nếu đang PROCESSING)
+            for _ in range(15):
+                st_res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=10)
+                state = st_res.json().get("state")
+                if state == "ACTIVE":
+                    break
+                if state == "FAILED":
+                    return None, "Gemini xử lý file audio thất bại."
+                time.sleep(1.5)
+
+            model_name = get_best_gemini_model(api_key)
+            prompt = (
+                "Listen carefully to this audio and transcribe ALL spoken words or song lyrics accurately into English. "
+                "Do NOT invent or guess unrelated content. "
+                "Return ONLY a valid JSON array of objects with format: "
+                '[{"start": 0, "text": "line of lyrics or speech"}, ...]. '
+                "Estimate 'start' in seconds for each line."
+            )
+            gen_res = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}",
+                json={
+                    "contents": [{
+                        "parts": [
+                            {"file_data": {"mime_type": mime_type, "file_uri": file_uri}},
+                            {"text": prompt}
+                        ]
+                    }],
+                    "generationConfig": {"temperature": 0.1}
+                },
+                timeout=90
+            )
+
+            # Xóa file tạm trên Gemini server cho sạch
+            try:
+                requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=5)
+            except Exception:
+                pass
+
+            if gen_res.status_code != 200:
+                return None, f"Lỗi Gemini API: {gen_res.text[:200]}"
+
+            raw_out = gen_res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            m = re.search(r"\[.*\]", raw_out, re.DOTALL)
+            if m:
+                parsed = json.loads(m.group(0))
+                segments = [
+                    {"start": float(item.get("start", i * 5)), "text": str(item.get("text", "")).strip()}
+                    for i, item in enumerate(parsed)
+                    if str(item.get("text", "")).strip()
+                ]
+                if segments:
+                    return segments, None
+
+            # Dự phòng nếu AI trả văn bản thường thay vì JSON
+            lines = [ln.strip() for ln in raw_out.splitlines() if ln.strip() and not ln.startswith("```")]
+            if lines:
+                return [{"start": i * 5, "text": ln} for i, ln in enumerate(lines)], None
+
+            return None, "Không nghe rõ lời thoại tiếng Anh trong audio."
+        except Exception as e:
+            return None, f"Lỗi khi bóc băng audio: {e}"
+
 @st.cache_data(ttl=86400, show_spinner=False)
 def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
     words_list = list(words_tuple)
     if not words_list:
         return {}
-
     result_map = {}
     if gemini_key:
+        model_name = get_best_gemini_model(gemini_key)
         prompt = (
             f"Translate each English word or phrase in this list into concise Vietnamese meaning (1-4 words each). "
             f"Return ONLY valid JSON object mapping each exact word to its Vietnamese meaning:\n{json.dumps(words_list, ensure_ascii=False)}"
         )
-        raw = call_gemini_text(prompt, gemini_key)
-        m = re.search(r"\{.*\}", raw, re.DOTALL)
-        if m:
-            try:
-                parsed = json.loads(m.group(0))
-                if isinstance(parsed, dict):
+        try:
+            res = requests.post(
+                f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){model_name}:generateContent?key={gemini_key}",
+                json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}},
+                timeout=15
+            )
+            if res.status_code == 200:
+                raw = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                m = re.search(r"\{.*\}", raw, re.DOTALL)
+                if m:
+                    parsed = json.loads(m.group(0))
                     for k, v in parsed.items():
                         result_map[str(k).lower().strip()] = str(v).strip()
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     for w in words_list:
         wl = w.lower().strip()
@@ -143,7 +276,6 @@ def translate_words_batch_vi(words_tuple: tuple, gemini_key: str) -> dict:
                 result_map[wl] = GoogleTranslator(source="en", target="vi").translate(w) or ""
             except Exception:
                 result_map[wl] = ""
-
     return result_map
 
 # --- CUSTOM CSS: WARM EDITORIAL VIDEO VOCAB ---
@@ -174,13 +306,12 @@ st.markdown("""
         margin-top: 4px;
         margin-bottom: 1.2rem;
     }
-
     .transcript-box {
         background-color: #FAF8F2;
         border: 1px solid #E7E2D6;
         border-radius: 14px;
         padding: 14px 16px;
-        max-height: 340px;
+        max-height: 360px;
         overflow-y: auto;
         line-height: 1.72;
         font-size: 0.96rem;
@@ -208,7 +339,6 @@ st.markdown("""
         border-radius: 20px;
         margin: 8px 0;
     }
-
     span[data-baseweb="tag"] {
         background-color: #EFECE3 !important;
         color: #1C1917 !important;
@@ -216,20 +346,16 @@ st.markdown("""
         border-radius: 8px !important;
         font-weight: 600 !important;
     }
-    span[data-baseweb="tag"] span {
-        color: #1C1917 !important;
-    }
-    span[data-baseweb="tag"] svg {
-        fill: #57534E !important;
-    }
+    span[data-baseweb="tag"] span { color: #1C1917 !important; }
+    span[data-baseweb="tag"] svg { fill: #57534E !important; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div>
-    <div class="vid-sub">Video Transcript & Lyrics Vocab</div>
+    <div class="vid-sub">AI Audio & Caption Transcriber</div>
     <div class="vid-title">YouTube Video Vocab</div>
-    <div class="vid-desc">Lấy phụ đề CC thật từ video YouTube hoặc dán lời bài hát / lời thoại để lọc từ vựng chính xác</div>
+    <div class="vid-desc">Tự động lấy phụ đề CC hoặc bóc băng trực tiếp từ âm thanh video bằng Gemini AI</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -248,59 +374,127 @@ if not isinstance(colloc_data, dict):
     colloc_data = {}
 user_all_words = {**vocab_data, **colloc_data}
 
-# --- THANH NHẬP LINK YOUTUBE ---
-col_url, col_btn = st.columns([4, 1.15], gap="small")
+for k, default_v in [("vv_segments", []), ("vv_source", ""), ("vv_video_id", None), ("vv_error", "")]:
+    if k not in st.session_state:
+        st.session_state[k] = default_v
+
+col_url, col_btn = st.columns([4, 1.2], gap="small")
 with col_url:
     yt_url = st.text_input(
         "Link YouTube",
-        placeholder="Paste YouTube link (e.g. https://www.youtube.com/watch?v=...)",
+        placeholder="Paste YouTube link (e.g. [https://www.youtube.com/watch?v=](https://www.youtube.com/watch?v=)...)",
         label_visibility="collapsed"
     )
 with col_btn:
-    st.button("Load Video  ↗", type="primary", use_container_width=True)
+    extract_clicked = st.button("Extract Script  ↗", type="primary", use_container_width=True)
 
-segments = []
-source_label = ""
-cc_missing = False
-video_id = extract_video_id(yt_url.strip()) if yt_url else None
-
-if yt_url and not video_id:
+parsed_vid = extract_video_id(yt_url.strip()) if yt_url else None
+if yt_url and not parsed_vid:
     st.error("Link YouTube chưa đúng định dạng. Hãy kiểm tra lại đường dẫn nhé!")
     st.stop()
 
-if video_id:
-    with st.spinner("Đang kiểm tra phụ đề CC từ YouTube..."):
-        cc_segments, cc_mode = fetch_youtube_transcript(video_id)
-    if cc_segments:
-        segments = cc_segments
-        source_label = cc_mode
-    else:
-        cc_missing = True
+if parsed_vid and (extract_clicked or parsed_vid != st.session_state.vv_video_id):
+    st.session_state.vv_video_id = parsed_vid
+    st.session_state.vv_error = ""
 
-with st.expander("Dán lời bài hát (Lyrics) hoặc lời thoại thủ công", expanded=cc_missing or not bool(segments)):
-    if cc_missing:
-        st.info("Video/bài hát này chưa có phụ đề CC tự động hoặc bị YouTube chặn lấy phụ đề trên Cloud. Hãy dán lời bài hát / lời thoại vào ô dưới để lọc từ vựng chuẩn xác nhất!")
-    manual_script = st.text_area(
-        "Dán lyrics hoặc transcript tiếng Anh vào đây:",
-        placeholder="Paste song lyrics or transcript here...",
-        height=130
-    )
+    with st.spinner("Bước 1/2: Đang kiểm tra phụ đề CC..."):
+        cc_segments, cc_mode = fetch_youtube_transcript(parsed_vid)
+
+    if cc_segments:
+        st.session_state.vv_segments = cc_segments
+        st.session_state.vv_source = cc_mode
+    else:
+        with st.spinner("Bước 2/2: Video chưa có CC — Đang tách âm thanh & bóc băng bằng Gemini AI..."):
+            ai_segments, ai_err = transcribe_audio_with_gemini(parsed_vid, gemini_api_key)
+        if ai_segments:
+            st.session_state.vv_segments = ai_segments
+            st.session_state.vv_source = "Gemini AI Audio Transcription"
+        else:
+            st.session_state.vv_segments = []
+            st.session_state.vv_source = ""
+            st.session_state.vv_error = ai_err or "Không thể bóc âm thanh từ video này."
+
+if st.session_state.vv_error:
+    st.warning(f"Không thể tự bóc từ link trên Cloud: {st.session_state.vv_error}")
+
+with st.expander("Hoặc tải file âm thanh/video lên (MP3, M4A, MP4) / dán lời thủ công", expanded=bool(st.session_state.vv_error)):
+    up_audio = st.file_uploader("Upload file audio/video ngắn từ máy để AI bóc băng 100% thành công:", type=["mp3", "m4a", "wav", "mp4", "webm"])
+    if up_audio is not None and st.button("Bóc băng từ file đã tải lên", type="primary"):
+        with st.spinner("Gemini AI đang nghe và chép lời từ file của bạn..."):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(up_audio.name)[1]) as tmp:
+                tmp.write(up_audio.read())
+                tmp_path = tmp.name
+            try:
+                file_size = os.path.getsize(tmp_path)
+                mime_type = up_audio.type or "audio/mp4"
+                init_res = requests.post(
+                    f"[https://generativelanguage.googleapis.com/upload/v1beta/files?key=](https://generativelanguage.googleapis.com/upload/v1beta/files?key=){gemini_api_key}",
+                    headers={
+                        "X-Goog-Upload-Protocol": "resumable",
+                        "X-Goog-Upload-Command": "start",
+                        "X-Goog-Upload-Header-Content-Length": str(file_size),
+                        "X-Goog-Upload-Header-Content-Type": mime_type,
+                        "Content-Type": "application/json",
+                    },
+                    json={"file": {"display_name": up_audio.name}},
+                    timeout=20
+                )
+                upload_url = init_res.headers.get("X-Goog-Upload-URL")
+                with open(tmp_path, "rb") as fb:
+                    up_res = requests.post(
+                        upload_url,
+                        headers={"Content-Length": str(file_size), "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize"},
+                        data=fb,
+                        timeout=60
+                    )
+                f_info = up_res.json().get("file", {})
+                f_uri, f_name = f_info.get("uri"), f_info.get("name")
+                model_name = get_best_gemini_model(gemini_api_key)
+                gen_res = requests.post(
+                    f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){model_name}:generateContent?key={gemini_api_key}",
+                    json={
+                        "contents": [{"parts": [
+                            {"file_data": {"mime_type": mime_type, "file_uri": f_uri}},
+                            {"text": 'Transcribe all English speech/lyrics accurately into JSON array: [{"start": 0, "text": "..."}].'}
+                        ]}],
+                        "generationConfig": {"temperature": 0.1}
+                    },
+                    timeout=90
+                )
+                raw_out = gen_res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                m = re.search(r"\[.*\]", raw_out, re.DOTALL)
+                if m:
+                    parsed = json.loads(m.group(0))
+                    st.session_state.vv_segments = [{"start": float(x.get("start", i * 5)), "text": x.get("text", "")} for i, x in enumerate(parsed) if x.get("text")]
+                    st.session_state.vv_source = f"Uploaded File: {up_audio.name}"
+                    st.session_state.vv_error = ""
+                    st.rerun()
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
+    manual_script = st.text_area("Hoặc dán trực tiếp lời bài hát / lời thoại tiếng Anh:", height=110)
     if manual_script.strip():
         lines = [line.strip() for line in re.split(r"\n+", manual_script.strip()) if line.strip()]
-        segments = [{"text": line, "start": i * 5} for i, line in enumerate(lines)]
-        source_label = "Manual Lyrics / Transcript"
+        st.session_state.vv_segments = [{"text": line, "start": i * 5} for i, line in enumerate(lines)]
+        st.session_state.vv_source = "Manual Transcript"
+        st.session_state.vv_error = ""
+
+segments = st.session_state.vv_segments
+source_label = st.session_state.vv_source
+video_id = st.session_state.vv_video_id
 
 if segments:
     full_text = " ".join(seg["text"].replace("\n", " ") for seg in segments)
-
     left_col, right_col = st.columns([1.15, 1], gap="large")
 
     with left_col:
         with st.container(border=True):
             st.caption("SOURCE PLAYER & SCRIPT")
             if video_id:
-                st.video(f"https://www.youtube.com/watch?v={video_id}")
-            st.markdown(f'<span class="source-pill">{source_label}</span>', unsafe_allow_html=True)
+                st.video(f"[https://www.youtube.com/watch?v=](https://www.youtube.com/watch?v=){video_id}")
+            if source_label:
+                st.markdown(f'<span class="source-pill">{source_label}</span>', unsafe_allow_html=True)
 
             transcript_html = "".join(
                 f'<div style="margin-bottom:8px;"><span class="time-badge">{int(seg["start"] // 60):02d}:{int(seg["start"] % 60):02d}</span>{seg["text"].replace(chr(10), " ")}</div>'
@@ -337,7 +531,7 @@ if segments:
 
             if words_to_process:
                 st.divider()
-                st.caption("Nghĩa tiếng Việt tự động dịch (bạn có thể sửa lại trước khi lưu):")
+                st.caption("Nghĩa tiếng Việt tự động dịch:")
                 vi_map = translate_words_batch_vi(tuple(words_to_process), gemini_api_key)
 
                 for idx, w in enumerate(words_to_process):
@@ -372,6 +566,6 @@ if segments:
                                 st.toast(f"Đã lưu '{w}' vào kho!")
                                 st.rerun()
             else:
-                st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu từ phần lời bên trái.")
+                st.info("Chọn từ ở danh sách trên hoặc nhập cụm từ bạn muốn lưu.")
 else:
-    st.info("Hãy dán link YouTube có phụ đề CC hoặc mở phần dán lời bài hát / lời thoại thủ công để bắt đầu.")
+    st.info("Dán link YouTube để hệ thống tự động lấy CC hoặc bóc âm thanh bằng Gemini AI.")
