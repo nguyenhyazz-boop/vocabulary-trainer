@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import base64
 import tempfile
 import requests
 from collections import Counter
@@ -39,6 +40,23 @@ def extract_video_id(url: str):
         if match:
             return match.group(1)
     return None
+
+def render_uploaded_player(file_bytes: bytes, mime_type: str):
+    if not file_bytes:
+        return
+    if len(file_bytes) > 25 * 1024 * 1024:
+        st.caption("File > 25MB — đã bóc lời thành công (bỏ qua phát preview để giữ trang mượt).")
+        return
+    b64 = base64.b64encode(file_bytes).decode("utf-8")
+    safe_mime = mime_type or "video/mp4"
+    html_player = f"""
+    <div style="border-radius:14px;overflow:hidden;border:1px solid #E7E2D6;background:#1C1917;">
+        <video controls style="width:100%;max-height:250px;display:block;background:#1C1917;">
+            <source src="data:{safe_mime};base64,{b64}" type="{safe_mime}">
+        </video>
+    </div>
+    """
+    components.html(html_player, height=260)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_available_gemini_models(api_key: str) -> list:
@@ -397,7 +415,7 @@ st.markdown("""
 <div class="editorial-header">
     <div class="vid-kicker">Editorial Media & Vocab Studio</div>
     <h1 class="vid-title">YouTube Video Vocab</h1>
-    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để Gemini AI nghe và trích từ vựng chuẩn xác.</p>
+    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để xem video, bóc lời và nhặt từ vựng.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -416,7 +434,14 @@ if not isinstance(colloc_data, dict):
     colloc_data = {}
 user_all_words = {**vocab_data, **colloc_data}
 
-for k, default_v in [("vv_segments", []), ("vv_source", ""), ("vv_video_id", None), ("vv_notice", "")]:
+for k, default_v in [
+    ("vv_segments", []),
+    ("vv_source", ""),
+    ("vv_video_id", None),
+    ("vv_notice", ""),
+    ("vv_uploaded_bytes", b""),
+    ("vv_uploaded_mime", ""),
+]:
     if k not in st.session_state:
         st.session_state[k] = default_v
 
@@ -440,6 +465,8 @@ if yt_url and not parsed_vid:
 
 if parsed_vid and (extract_clicked or parsed_vid != st.session_state.vv_video_id):
     st.session_state.vv_video_id = parsed_vid
+    st.session_state.vv_uploaded_bytes = b""
+    st.session_state.vv_uploaded_mime = ""
     st.session_state.vv_notice = ""
 
     with st.spinner("Đang kiểm tra phụ đề CC từ YouTube..."):
@@ -466,20 +493,34 @@ with st.expander("STEP 2 · Tải file audio/video lên (MP3, M4A, WAV, MP4, WEB
         type=["mp3", "m4a", "wav", "mp4", "webm"]
     )
     if up_audio is not None and st.button("Bóc băng bằng Gemini AI", type="primary"):
+        raw_bytes = up_audio.getvalue()
+        ext = os.path.splitext(up_audio.name)[1].lower()
+        ext_mime = {
+            ".mp4": "video/mp4",
+            ".webm": "video/webm",
+            ".m4a": "audio/mp4",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".ogg": "audio/ogg",
+        }
+        resolved_mime = ext_mime.get(ext, up_audio.type or "video/mp4")
+
         with st.spinner("Gemini AI đang nghe và chép lời từ file của bạn..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(up_audio.name)[1]) as tmp:
-                tmp.write(up_audio.read())
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext or ".mp4") as tmp:
+                tmp.write(raw_bytes)
                 tmp_path = tmp.name
             try:
                 segs, up_err = upload_and_transcribe_file(
                     tmp_path,
-                    up_audio.type or "audio/mp4",
+                    resolved_mime,
                     up_audio.name,
                     gemini_api_key
                 )
                 if segs:
                     st.session_state.vv_segments = segs
                     st.session_state.vv_source = f"Gemini AI · {up_audio.name}"
+                    st.session_state.vv_uploaded_bytes = raw_bytes if resolved_mime.startswith("video/") else b""
+                    st.session_state.vv_uploaded_mime = resolved_mime
                     st.session_state.vv_notice = ""
                     st.rerun()
                 else:
@@ -510,11 +551,14 @@ if segments:
     with left_col:
         with st.container(border=True):
             st.caption("PLAYER & TRANSCRIPT")
-            if video_id:
+            if st.session_state.vv_uploaded_bytes:
+                render_uploaded_player(st.session_state.vv_uploaded_bytes, st.session_state.vv_uploaded_mime)
+            elif video_id:
                 components.iframe(
                     f"[https://www.youtube.com/embed/](https://www.youtube.com/embed/){video_id}",
                     height=245
                 )
+
             if source_label:
                 st.markdown(
                     f'<div class="meta-strip"><span class="source-pill">✦ {source_label}</span><span class="source-pill">{len(segments)} dòng</span></div>',
