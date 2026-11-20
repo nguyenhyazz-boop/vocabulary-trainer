@@ -44,19 +44,29 @@ def extract_video_id(url: str):
 def render_uploaded_player(file_bytes: bytes, mime_type: str):
     if not file_bytes:
         return
-    if len(file_bytes) > 25 * 1024 * 1024:
-        st.caption("File > 25MB — đã bóc lời thành công (bỏ qua phát preview để giữ trang mượt).")
+    if len(file_bytes) > 20 * 1024 * 1024:
+        st.caption("File > 20MB — đã bóc lời xong (bỏ qua phát trực tiếp để trang không bị nặng/mất tiếng).")
         return
     b64 = base64.b64encode(file_bytes).decode("utf-8")
     safe_mime = mime_type or "video/mp4"
+    is_audio = safe_mime.startswith("audio/")
+    tag_name = "audio" if is_audio else "video"
+    extra_attrs = (
+        'style="width:100%;margin-top:4px;"'
+        if is_audio
+        else 'playsinline style="width:100%;max-height:240px;display:block;background:#1C1917;"'
+    )
+    box_style = "padding:10px 12px;background:#FAF8F2;" if is_audio else "background:#1C1917;"
+    box_height = 76 if is_audio else 255
+
     html_player = f"""
-    <div style="border-radius:14px;overflow:hidden;border:1px solid #E7E2D6;background:#1C1917;">
-        <video controls style="width:100%;max-height:250px;display:block;background:#1C1917;">
+    <div style="border-radius:14px;overflow:hidden;border:1px solid #E7E2D6;{box_style}">
+        <{tag_name} controls {extra_attrs}>
             <source src="data:{safe_mime};base64,{b64}" type="{safe_mime}">
-        </video>
+        </{tag_name}>
     </div>
     """
-    components.html(html_player, height=260)
+    components.html(html_player, height=box_height)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_available_gemini_models(api_key: str) -> list:
@@ -415,7 +425,7 @@ st.markdown("""
 <div class="editorial-header">
     <div class="vid-kicker">Editorial Media & Vocab Studio</div>
     <h1 class="vid-title">YouTube Video Vocab</h1>
-    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để xem video, bóc lời và nhặt từ vựng.</p>
+    <p class="vid-desc">Dán link YouTube có phụ đề CC để bóc nhanh, hoặc tải file audio/video lên (MP3, M4A, MP4) để xem/nghe, bóc lời và nhặt từ vựng.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -519,7 +529,7 @@ with st.expander("STEP 2 · Tải file audio/video lên (MP3, M4A, WAV, MP4, WEB
                 if segs:
                     st.session_state.vv_segments = segs
                     st.session_state.vv_source = f"Gemini AI · {up_audio.name}"
-                    st.session_state.vv_uploaded_bytes = raw_bytes if resolved_mime.startswith("video/") else b""
+                    st.session_state.vv_uploaded_bytes = raw_bytes
                     st.session_state.vv_uploaded_mime = resolved_mime
                     st.session_state.vv_notice = ""
                     st.rerun()
