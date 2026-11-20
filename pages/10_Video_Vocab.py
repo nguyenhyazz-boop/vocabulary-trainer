@@ -100,29 +100,40 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
     if not api_key:
         return None, "Chưa cấu hình GEMINI_API_KEY trong Secrets."
     if not file_path or not os.path.exists(file_path):
-        return None, "Không tìm thấy file âm thanh tạm."
+        return None, "Không tìm thấy file âm thanh/video tạm."
 
     file_size = os.path.getsize(file_path)
     if file_size <= 0:
-        return None, "File âm thanh rỗng."
+        return None, "File rỗng."
+
+    ext = os.path.splitext(file_path)[1].lower()
+    ext_mime = {
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".m4a": "audio/mp4",
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+    }
+    final_mime = ext_mime.get(ext, mime_type or "video/mp4")
 
     try:
         init_headers = {
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "start",
             "X-Goog-Upload-Header-Content-Length": str(file_size),
-            "X-Goog-Upload-Header-Content-Type": mime_type or "audio/mp4",
+            "X-Goog-Upload-Header-Content-Type": final_mime,
             "Content-Type": "application/json",
         }
         init_res = requests.post(
             f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}",
             headers=init_headers,
             json={"file": {"display_name": display_name}},
-            timeout=20
+            timeout=25
         )
         upload_url = (init_res.headers.get("X-Goog-Upload-URL") or "").strip()
         if not upload_url.startswith("http"):
-            return None, "Không lấy được đường dẫn upload từ Gemini (hãy kiểm tra GEMINI_API_KEY hoặc tải file audio lên)."
+            return None, f"Không lấy được URL upload ({init_res.status_code})."
 
         with open(file_path, "rb") as f_bin:
             up_res = requests.post(
@@ -133,56 +144,73 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
                     "X-Goog-Upload-Command": "upload, finalize",
                 },
                 data=f_bin,
-                timeout=60
+                timeout=90
             )
+        if up_res.status_code not in (200, 201):
+            return None, f"Upload lỗi ({up_res.status_code}): {up_res.text[:180]}"
+
         file_info = up_res.json().get("file", {})
         file_uri = file_info.get("uri")
         file_name = file_info.get("name")
-        if not file_uri:
-            return None, "Upload audio lên Gemini thất bại."
+        if not file_uri or not file_name:
+            return None, "Phản hồi upload thiếu thông tin file."
 
-        if file_name:
-            for _ in range(15):
-                st_res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=10)
+        # Chờ Gemini xử lý xong file media trước khi gọi generateContent
+        for _ in range(20):
+            st_res = requests.get(
+                f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}",
+                timeout=15
+            )
+            if st_res.status_code == 200:
                 state = st_res.json().get("state")
                 if state == "ACTIVE":
                     break
                 if state == "FAILED":
-                    return None, "Gemini xử lý file audio thất bại."
-                time.sleep(1.5)
+                    return None, "Gemini xử lý file media thất bại."
+            time.sleep(1.5)
 
-        model_name = get_best_gemini_model(api_key)
         prompt = (
-            "Listen carefully to this audio and transcribe ALL spoken words or song lyrics accurately into English. "
-            "Do NOT invent or guess unrelated content. "
-            "Return ONLY a valid JSON array of objects with format: "
-            '[{"start": 0, "text": "line of lyrics or speech"}, ...]. '
-            "Estimate 'start' in seconds for each line."
-        )
-        gen_res = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}",
-            json={
-                "contents": [{
-                    "parts": [
-                        {"file_data": {"mime_type": mime_type or "audio/mp4", "file_uri": file_uri}},
-                        {"text": prompt}
-                    ]
-                }],
-                "generationConfig": {"temperature": 0.1}
-            },
-            timeout=90
+            "Listen carefully to this media file and transcribe ALL spoken words or song lyrics into English. "
+            "Do NOT make up unrelated content. "
+            "Return ONLY a JSON array: [{\"start\": 0, \"text\": \"line\"}, ...]."
         )
 
-        if file_name:
-            try:
-                requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=5)
-            except Exception:
-                pass
+        candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        best_model = get_best_gemini_model(api_key)
+        if best_model not in candidate_models:
+            candidate_models.insert(0, best_model)
 
-        if gen_res.status_code != 200:
-            return None, f"Lỗi Gemini API ({gen_res.status_code})."
+        raw_out = ""
+        last_err = ""
+        for m_name in candidate_models:
+            gen_res = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={api_key}",
+                json={
+                    "contents": [{
+                        "parts": [
+                            {"file_data": {"mime_type": final_mime, "file_uri": file_uri}},
+                            {"text": prompt}
+                        ]
+                    }],
+                    "generationConfig": {"temperature": 0.1}
+                },
+                timeout=90
+            )
+            if gen_res.status_code == 200:
+                raw_out = gen_res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                if raw_out:
+                    break
+            else:
+                last_err = f"({gen_res.status_code}) {gen_res.text[:160]}"
 
-        raw_out = gen_res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        try:
+            requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}", timeout=8)
+        except Exception:
+            pass
+
+        if not raw_out:
+            return None, f"Lỗi Gemini API {last_err or '(404)'}."
+
         m = re.search(r"\[.*\]", raw_out, re.DOTALL)
         if m:
             parsed = json.loads(m.group(0))
@@ -198,9 +226,9 @@ def upload_and_transcribe_file(file_path: str, mime_type: str, display_name: str
         if lines:
             return [{"start": i * 5, "text": ln} for i, ln in enumerate(lines)], None
 
-        return None, "Không nghe rõ lời thoại tiếng Anh trong audio."
+        return None, "Không nhận diện được lời thoại tiếng Anh trong file."
     except Exception as e:
-        return None, f"Lỗi khi xử lý audio: {e}"
+        return None, f"Lỗi xử lý file: {e}"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def transcribe_youtube_audio(video_id: str, api_key: str):
